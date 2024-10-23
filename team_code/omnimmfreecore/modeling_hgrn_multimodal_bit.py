@@ -16,13 +16,13 @@ from transformers.modeling_outputs import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 
-from hgrnbitattention import HGRNBitAttention
-from config import HGRNBitMultimodalConfig
-from utils import RecurrentCache
-from rmsnorm import RMSNorm, RMSNormLinear
-from fusedcrossentropy import FusedCrossEntropyLoss
-from activation import swiglu
-from fusedbitnet import FusedBitLinear as BitLinear
+from .hgrnbitattention import HGRNBitAttention
+from .config import HGRNBitMultimodalConfig
+from .utils import RecurrentCache
+from .rmsnorm import RMSNorm, RMSNormLinear
+from .fusedcrossentropy import FusedCrossEntropyLoss
+from .activation import swiglu
+from .fusedbitnet import FusedBitLinear as BitLinear
 
 logger = logging.get_logger(__name__)
 
