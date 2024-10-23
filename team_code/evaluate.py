@@ -3,7 +3,6 @@ import os
 os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
-import numpy as np
 from functools import partial
 from typing import Optional, Dict, Any
 
