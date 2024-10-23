@@ -26,7 +26,6 @@ def parse_args():
 
 
 bleu = evaluate.load("bleu", trust_remote_code=True)
-rouge = evaluate.load("rouge", trust_remote_code=True)
 meteor = evaluate.load("meteor", trust_remote_code=True)
 
 
@@ -39,13 +38,10 @@ def compute_metrics(eval_pred, tokenizer):
     bleu_score = bleu.compute(
         predictions=decoded_preds, references=[[label] for label in decoded_labels]
     )
-    rouge_score = rouge.compute(predictions=decoded_preds, references=decoded_labels)
     meteor_score = meteor.compute(predictions=decoded_preds, references=decoded_labels)
 
     return {
         "bleu": bleu_score["bleu"],
-        "rouge1": rouge_score["rouge1"].mid.fmeasure,
-        "rougeL": rouge_score["rougeL"].mid.fmeasure,
         "meteor": meteor_score["meteor"],
     }
 

@@ -29,7 +29,6 @@ opencv-python==4.7.0.72
 # pymorphy2
 # wordtodigits
 nltk
-rouge_score
 
 # misc
 # git+https://github.com/facebookresearch/pytorchvideo.git@28fe037d212663c6a24f373b94cc5d478c8c1a1d
