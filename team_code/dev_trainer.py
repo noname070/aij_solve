@@ -1,12 +1,14 @@
 import argparse
 import datasets
+import torch
+
+from transformers import TrainerCallback
 from transformers import (
     AutoTokenizer,
     Trainer,
     TrainingArguments,
     AutoModelForSequenceClassification,
 )
-from transformers import TrainerCallback
 import evaluate
 
 from mm_utils import tokenizer_multimodal_token
@@ -25,25 +27,20 @@ def parse_args():
     return parser.parse_args()
 
 
-bleu = evaluate.load("bleu", trust_remote_code=True)
-meteor = evaluate.load("meteor", trust_remote_code=True)
+accuracy_metric = evaluate.load("accuracy", trust_remote_code=True)
+precision_metric = evaluate.load("precision", trust_remote_code=True)
 
 
-def compute_metrics(eval_pred, tokenizer):
-    predictions, labels = eval_pred
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    predictions = torch.argmax(logits, dim=-1)
 
-    decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
-    decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-
-    bleu_score = bleu.compute(
-        predictions=decoded_preds, references=[[label] for label in decoded_labels]
+    accuracy = accuracy_metric.compute(predictions=predictions, references=labels)
+    precision = precision_metric.compute(
+        predictions=predictions, references=labels, average="macro"
     )
-    meteor_score = meteor.compute(predictions=decoded_preds, references=decoded_labels)
 
-    return {
-        "bleu": bleu_score["bleu"],
-        "meteor": meteor_score["meteor"],
-    }
+    return {"accuracy": accuracy["accuracy"], "precision": precision["precision"]}
 
 
 class JudgeEvaluationCallback(TrainerCallback):
@@ -87,11 +84,12 @@ def main():
         "bert-base-uncased", num_labels=2
     )
 
-    train_dataset = datasets.load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1", split="train")
-    test_dataset = datasets.load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1", split="test")
+    dataset = datasets.load_dataset(
+        "lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1", split="multi_choice"
+    )
 
     def preprocess_function(ex):
-        human_question = next(
+        question = next(
             (
                 entry["value"]
                 for entry in ex["conversations"]
@@ -99,30 +97,26 @@ def main():
             ),
             None,
         )
-        gpt_answer = next(
+        correct_answer = next(
             (entry["value"] for entry in ex["conversations"] if entry["from"] == "gpt"),
             None,
         )
 
-        if human_question and gpt_answer and ex.get("video", False):
+        if question and correct_answer and ex.get("video", False):
             inputs = tokenizer_multimodal_token(
-                text=human_question,
+                text=question,
                 video_paths=ex.get("video"),
                 audio_paths=None,
                 tokenizer=tokenizer,
             )
-            inputs["labels"] = tokenizer(gpt_answer, return_tensors="pt")["input_ids"]
+            inputs["labels"] = tokenizer(correct_answer, return_tensors="pt")[
+                "input_ids"
+            ]
             return inputs
         else:
             return {}
 
-    tokenized_train_datasets = train_dataset.map(
-        preprocess_function, batched=True, remove_columns=train_dataset.column_names
-    )
-    
-    tokenized_test_datasets = test_dataset.map(
-        preprocess_function, batched=True, remove_columns=test_dataset.column_names
-    )
+    tokenized_datasets = dataset.map(preprocess_function, batched=True)
 
     training_args = TrainingArguments(
         output_dir=args.output_dir,
@@ -145,14 +139,14 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_train_datasets,
-        eval_dataset=tokenized_test_datasets,
+        train_dataset=tokenized_datasets["train"],
+        eval_dataset=tokenized_datasets["test"],
         tokenizer=tokenizer,
-        compute_metrics=lambda eval_pred: compute_metrics(eval_pred, tokenizer),
+        compute_metrics=compute_metrics,
     )
 
     judge_callback = JudgeEvaluationCallback(
-        judge_model, judge_tokenizer, tokenized_test_datasets
+        judge_model, judge_tokenizer, tokenized_datasets["test"]
     )
     trainer.add_callback(judge_callback)
 
