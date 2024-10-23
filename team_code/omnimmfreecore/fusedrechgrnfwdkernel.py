@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 
 import torch
 import triton
-import triton.laznguage as tl
+import triton.language as tl
 
 from .utils import contiguous
 
