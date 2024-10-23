@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 
 import functools
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
+from transformers.cache_utils import Cache
 
 
 def contiguous(fn):
@@ -25,16 +28,6 @@ def require_version(version, hint):
                       **{k: (v if not isinstance(v, torch.Tensor) else v.contiguous()) for k, v in kwargs.items()})
         return wrapper
     return decorator
-
-# -*- coding: utf-8 -*-
-
-from __future__ import annotations
-
-from typing import Any, Dict, List, Optional, Tuple
-
-import torch
-from transformers.cache_utils import Cache
-
 
 class RecurrentCache(Cache):
     """
