@@ -43,51 +43,15 @@ def compute_metrics(eval_pred):
     return {"accuracy": accuracy["accuracy"], "precision": precision["precision"]}
 
 
-class JudgeEvaluationCallback(TrainerCallback):
-    def __init__(self, judge_model, judge_tokenizer, eval_dataset):
-        self.judge_model = judge_model
-        self.judge_tokenizer = judge_tokenizer
-        self.eval_dataset = eval_dataset
-
-    def on_epoch_end(self, args, state, control, **kwargs):
-        trainer = kwargs["model_trainer"]
-        model = trainer.model
-        tokenizer = trainer.tokenizer
-
-        predictions = trainer.predict(self.eval_dataset)
-        decoded_preds = tokenizer.batch_decode(
-            predictions.predictions, skip_special_tokens=True
-        )
-
-        inputs = self.judge_tokenizer(
-            decoded_preds, padding=True, truncation=True, return_tensors="pt"
-        )
-        outputs = self.judge_model(**inputs)
-        predicted_labels = outputs.logits.argmax(dim=-1)
-
-        num_normal = (predicted_labels == 1).sum().item()
-        total = len(predicted_labels)
-
-        print(
-            f"Ep {state.epoch}: j-conclusion {num_normal}/{total} ({num_normal / total:.4f})"
-        )
-
-
 def main():
     args = parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained("ridger/MMfreeLM-2.7B")
     model = HGRNBitMultimodalModel(config=HGRNBitMultimodalConfig())
 
-    judge_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
-    judge_model = AutoModelForSequenceClassification.from_pretrained(
-        "bert-base-uncased", num_labels=2
-    )
-
     dataset = datasets.load_dataset(
         "lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1", split="multi_choice"
     )
-    
 
     def preprocess_function(ex):
         conversations = ex.get("conversations", [])
@@ -134,8 +98,8 @@ def main():
         save_strategy="steps",
         do_train=True,
         learning_rate=args.learning_rate,
-        per_gpu_train_batch_size=args.batch_size,
-        per_gpu_eval_batch_size=args.batch_size,
+        per_device_train_batch_size=args.batch_size,
+        per_device_eval_batch_size=args.batch_size,
         num_train_epochs=args.epochs,
         logging_dir=args.logging_dir,
         logging_steps=10,
@@ -157,11 +121,6 @@ def main():
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
     )
-
-    judge_callback = JudgeEvaluationCallback(
-        judge_model, judge_tokenizer, tokenized_datasets["test"]
-    )
-    trainer.add_callback(judge_callback)
 
     trainer.train()
     trainer.save_model(args.output_dir)
