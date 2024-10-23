@@ -19,7 +19,7 @@ from .fusedrechgrnfwdkernel import fused_recurrent_hgrn
 
 # from mmfreelm.ops.bitnet import BitLinear_Fuse as BitLinear
 
-from team_code.omnimmfreecore.bitnet import BitLinear
+from .bitnet import BitLinear
 
 
 class HGRNBitAttention(nn.Module):
