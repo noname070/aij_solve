@@ -75,7 +75,7 @@ def main():
             None,
         )
 
-        if not question and correct_answer and ex.get("video"):
+        if not question or not correct_answer or not ex.get("video"):
             return None
 
         inputs = tokenizer_multimodal_token(
@@ -86,7 +86,8 @@ def main():
         inputs["labels"] = tokenizer(correct_answer, return_tensors="pt")["input_ids"]
         return inputs
 
-    tokenized_datasets = dataset.map(preprocess_function, batched=True)
+    tokenized_datasets = dataset.map(preprocess_function, batched=True)\
+                                .filter(lambda x: x is not None)
     train_Tdataset, test_Tdataset = train_test_split(tokenized_datasets, test_size=0.3)
 
     training_args = TrainingArguments(
