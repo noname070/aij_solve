@@ -1,5 +1,5 @@
 import argparse
-from datasets import load_dataset
+import datasets
 from transformers import (
     AutoTokenizer,
     Trainer,
@@ -87,7 +87,7 @@ def main():
         "bert-base-uncased", num_labels=2
     )
 
-    dataset = load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1")
+    dataset = datasets.load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1")
 
     def preprocess_function(ex):
         human_question = next(
@@ -116,7 +116,7 @@ def main():
             return {}
 
     tokenized_datasets = dataset.map(
-        preprocess_function, batched=True, remove_columns=dataset["train"].column_names
+        preprocess_function, batched=True, remove_columns=dataset[datasets.Split.TRAIN].column_names
     )
 
     training_args = TrainingArguments(
@@ -140,14 +140,14 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_datasets["train"],
-        eval_dataset=tokenized_datasets["validation"],
+        train_dataset=tokenized_datasets[datasets.Split.TRAIN],
+        eval_dataset=tokenized_datasets[datasets.Split.TEST],
         tokenizer=tokenizer,
         compute_metrics=lambda eval_pred: compute_metrics(eval_pred, tokenizer),
     )
 
     judge_callback = JudgeEvaluationCallback(
-        judge_model, judge_tokenizer, tokenized_datasets["validation"]
+        judge_model, judge_tokenizer, tokenized_datasets[datasets.Split.TRAIN]
     )
     trainer.add_callback(judge_callback)
 
