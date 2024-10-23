@@ -10,7 +10,6 @@ from mm_utils import tokenizer_multimodal_token
 from omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
 from omnimmfreecore.config import HGRNBitMultimodalConfig
 
-
 def parse_args():
     parser = argparse.ArgumentParser(description="train config")
     parser.add_argument("--dataset_path", type=str)
@@ -21,7 +20,6 @@ def parse_args():
     parser.add_argument("--logging_dir", type=str, default="./logs")
     return parser.parse_args()
 
-
 def main():
     args = parse_args()
 
@@ -31,15 +29,22 @@ def main():
     dataset = load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1")
 
     def preprocess_function(ex):
-        inputs = tokenizer_multimodal_token(
-            text=ex["text"],
-            video_paths=ex["video_path"],
-            audio_paths=ex["audio_path"],  # мало ли
-            tokenizer=tokenizer,
-        )
-        return inputs
+        human_question = next((entry["value"] for entry in ex["conversations"] if entry["from"] == "human"), None)
+        gpt_answer = next((entry["value"] for entry in ex["conversations"] if entry["from"] == "gpt"), None)
+        
+        if human_question and gpt_answer and ex.get("video", False):
+            inputs = tokenizer_multimodal_token(
+                text=human_question,
+                video_paths=ex.get("video"),
+                audio_paths=None,
+                tokenizer=tokenizer,
+            )
+            inputs['labels'] = tokenizer(gpt_answer, return_tensors="pt")['input_ids']
+            return inputs
+        else:
+            return {}
 
-    tokenized_datasets = dataset.map(preprocess_function, batched=True)
+    tokenized_datasets = dataset.map(preprocess_function, batched=True, remove_columns=dataset["train"].column_names)
 
     training_args = TrainingArguments(
         output_dir=args.output_dir,
@@ -65,12 +70,11 @@ def main():
         train_dataset=tokenized_datasets["train"],
         eval_dataset=tokenized_datasets["validation"],
         tokenizer=tokenizer,
-        compute_metrics=None,
+        compute_metrics=None, 
     )
 
     trainer.train()
     trainer.save_model(args.output_dir)
-
 
 if __name__ == "__main__":
     main()
