@@ -6,9 +6,9 @@ from transformers import (
     TrainingArguments,
 )
 
-from mm_utils import tokenizer_multimodal_token
-from omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
-from omnimmfreecore.config import HGRNBitMultimodalConfig
+from .mm_utils import tokenizer_multimodal_token
+from .omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
+from .omnimmfreecore.config import HGRNBitMultimodalConfig
 
 
 def parse_args():
