@@ -24,9 +24,9 @@ def parse_args():
     return parser.parse_args()
 
 
-bleu = load_metric("bleu")
-rouge = load_metric("rouge")
-meteor = load_metric("meteor")
+bleu = load_metric("bleu", trust_remote_code=True)
+rouge = load_metric("rouge", trust_remote_code=True)
+meteor = load_metric("meteor", trust_remote_code=True)
 
 
 def compute_metrics(eval_pred, tokenizer):
