@@ -26,9 +26,8 @@ imageio-ffmpeg==0.4.9
 # nltk
 
 # misc
-git+https://github.com/facebookresearch/pytorchvideo.git@28fe037d212663c6a24f373b94cc5d478c8c1a1d
-scikit-learn==1.2.2
-huggingface_hub==0.23.4
+# git+https://github.com/facebookresearch/pytorchvideo.git@28fe037d212663c6a24f373b94cc5d478c8c1a1d
+# scikit-learn==1.2.2
 sentencepiece==0.1.99
 protobuf
 shortuuid
@@ -36,7 +35,7 @@ einops==0.6.1
 einops-exts==0.0.4
 bitsandbytes==0.43.0
 pydantic>=2.0
-markdown2[all]
+# markdown2[all]
 httpx==0.24.1
 # requests
 # openai
