@@ -87,7 +87,8 @@ def main():
         "bert-base-uncased", num_labels=2
     )
 
-    dataset = datasets.load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1")
+    train_dataset = datasets.load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1", split="train")
+    test_dataset = datasets.load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1", split="test")
 
     def preprocess_function(ex):
         human_question = next(
@@ -115,8 +116,12 @@ def main():
         else:
             return {}
 
-    tokenized_datasets = dataset.map(
-        preprocess_function, batched=True, remove_columns=dataset[datasets.Split.TRAIN].column_names
+    tokenized_train_datasets = train_dataset.map(
+        preprocess_function, batched=True, remove_columns=train_dataset.column_names
+    )
+    
+    tokenized_test_datasets = test_dataset.map(
+        preprocess_function, batched=True, remove_columns=test_dataset.column_names
     )
 
     training_args = TrainingArguments(
@@ -140,14 +145,14 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_datasets[datasets.Split.TRAIN],
-        eval_dataset=tokenized_datasets[datasets.Split.TEST],
+        train_dataset=tokenized_train_datasets,
+        eval_dataset=tokenized_test_datasets,
         tokenizer=tokenizer,
         compute_metrics=lambda eval_pred: compute_metrics(eval_pred, tokenizer),
     )
 
     judge_callback = JudgeEvaluationCallback(
-        judge_model, judge_tokenizer, tokenized_datasets[datasets.Split.TRAIN]
+        judge_model, judge_tokenizer, tokenized_test_datasets
     )
     trainer.add_callback(judge_callback)
 
