@@ -87,9 +87,19 @@ def main():
         return inputs
 
     tokenized_datasets = dataset.map(preprocess_function, batched=True)\
-                                .filter(lambda x: x is not None)
-    train_Tdataset, test_Tdataset = train_test_split(tokenized_datasets, test_size=0.3)
+                                .filter(lambda x: x is not None and 'labels' in x)
+   
+    # TEST ONLY
+    for i in range(len(tokenized_datasets)):
+        try:
+            _ = tokenized_datasets[i]
+        except KeyError as e:
+            print(f"KeyError at index {i}: {e}")
 
+    train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
+    train_Tdataset = train_test_data["train"]
+    test_Tdataset = train_test_data["test"]
+    
     training_args = TrainingArguments(
         output_dir=args.output_dir,
         evaluation_strategy="steps",
