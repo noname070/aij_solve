@@ -27,7 +27,7 @@ opencv-python==4.7.0.72
 # soundfile
 # pymorphy2
 # wordtodigits
-nltkx
+nltk
 rouge_score
 
 # misc
