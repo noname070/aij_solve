@@ -84,6 +84,10 @@ def main():
             tokenizer=tokenizer,
         )
         inputs["labels"] = tokenizer(correct_answer, return_tensors="pt")["input_ids"]
+        
+        # TEST ONLY
+        print(f"Processed example: {inputs}")
+        
         return inputs
 
     tokenized_datasets = dataset.map(preprocess_function, batched=True)\
