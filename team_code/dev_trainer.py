@@ -54,6 +54,10 @@ def main():
     )
 
     def preprocess_function(ex):
+        
+        # TEST ONLY
+        print(f"Original example: {ex}")
+        
         conversations = ex.get("conversation", [])
         if not isinstance(conversations, list) or not conversations:
             return None
@@ -90,8 +94,8 @@ def main():
         
         return inputs
 
-    tokenized_datasets = dataset.map(preprocess_function, batched=True)\
-                                .filter(lambda x: 'labels' in x and x['labels'] is not None)
+    print(f"Raw dataset size: {len(dataset)}")
+    tokenized_datasets = dataset.map(preprocess_function, batched=True)
    
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
     train_Tdataset = train_test_data["train"]
