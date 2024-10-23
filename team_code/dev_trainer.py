@@ -120,7 +120,7 @@ def main():
         save_total_limit=5,
         report_to="tensorboard",
         fp16=True,
-        dataloader_num_workers=4,
+        dataloader_num_workers=0,
         gradient_accumulation_steps=2,
         deepspeed=None,
     )
