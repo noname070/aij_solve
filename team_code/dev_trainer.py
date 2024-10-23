@@ -54,8 +54,8 @@ def main():
     )
 
     def preprocess_function(ex):
-        conversations = ex.get("conversations", [])
-        if not isinstance(conversations, list):
+        conversations = ex.get("conversation", [])
+        if not isinstance(conversations, list) or not conversations:
             return None
 
         question = next(
@@ -77,9 +77,8 @@ def main():
 
         if not question and correct_answer and ex.get("video"):
             return None
-        
+
         inputs = tokenizer_multimodal_token(
-            text=question,
             video_paths=ex.get("video"),
             audio_paths=None,
             tokenizer=tokenizer,
