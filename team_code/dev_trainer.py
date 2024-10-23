@@ -10,7 +10,7 @@ from transformers import (
     AutoModelForSequenceClassification,
 )
 import evaluate  # type: ignore
-
+from sklearn.model_selection import train_test_split
 from mm_utils import tokenizer_multimodal_token
 from omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
 from omnimmfreecore.config import HGRNBitMultimodalConfig
@@ -87,6 +87,7 @@ def main():
     dataset = datasets.load_dataset(
         "lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1", split="multi_choice"
     )
+    
 
     def preprocess_function(ex):
         conversations = ex.get("conversations", [])
@@ -125,6 +126,7 @@ def main():
             return {}
 
     tokenized_datasets = dataset.map(preprocess_function, batched=True)
+    train_Tdataset, test_Tdataset = train_test_split(tokenized_datasets, test_size=0.3)
 
     training_args = TrainingArguments(
         output_dir=args.output_dir,
@@ -150,8 +152,8 @@ def main():
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_datasets["train"],
-        eval_dataset=tokenized_datasets["test"],
+        train_dataset=train_Tdataset,
+        eval_dataset=test_Tdataset,
         tokenizer=tokenizer,
         compute_metrics=compute_metrics,
     )
