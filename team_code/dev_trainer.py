@@ -9,7 +9,7 @@ from transformers import (
     TrainingArguments,
     AutoModelForSequenceClassification,
 )
-import evaluate
+import evaluate  # type: ignore
 
 from mm_utils import tokenizer_multimodal_token
 from omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
@@ -89,20 +89,28 @@ def main():
     )
 
     def preprocess_function(ex):
+        conversations = ex.get("conversations", [])
+        if not isinstance(conversations, list):
+            return {}
+
         question = next(
             (
                 entry["value"]
-                for entry in ex["conversations"]
-                if entry["from"] == "human"
+                for entry in conversations
+                if isinstance(entry, dict) and entry.get("from") == "human"
             ),
             None,
         )
         correct_answer = next(
-            (entry["value"] for entry in ex["conversations"] if entry["from"] == "gpt"),
+            (
+                entry["value"]
+                for entry in conversations
+                if isinstance(entry, dict) and entry.get("from") == "gpt"
+            ),
             None,
         )
 
-        if question and correct_answer and ex.get("video", False):
+        if question and correct_answer and ex.get("video"):
             inputs = tokenizer_multimodal_token(
                 text=question,
                 video_paths=ex.get("video"),

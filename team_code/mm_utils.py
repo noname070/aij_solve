@@ -10,7 +10,7 @@ import imageio
 import torchaudio
 import numpy as np
 from PIL import Image
-from decord import VideoReader, cpu
+from decord import VideoReader, cpu # type: ignore
 from transformers import StoppingCriteria
 
 from constants import (
