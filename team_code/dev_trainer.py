@@ -54,10 +54,6 @@ def main():
     )
 
     def preprocess_function(ex):
-        
-        # TEST ONLY
-        print(f"Original example: {ex}")
-        
         conversations = ex.get("conversation", [])
         if not isinstance(conversations, list) or not conversations:
             return None
@@ -79,7 +75,7 @@ def main():
             None,
         )
 
-        if not question or not correct_answer or not ex.get("video"):
+        if not question or not correct_answer:
             return None
 
         inputs = tokenizer_multimodal_token(
@@ -88,22 +84,19 @@ def main():
             tokenizer=tokenizer,
         )
         inputs["labels"] = tokenizer(correct_answer, return_tensors="pt")["input_ids"]
-        
-        # TEST ONLY
-        print(f"Processed example: {inputs}")
-        
+
         return inputs
 
     print(f"Raw dataset size: {len(dataset)}")
     tokenized_datasets = dataset.map(preprocess_function, batched=True)
-   
+
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
     train_Tdataset = train_test_data["train"]
     test_Tdataset = train_test_data["test"]
-    
+
     print(f"Train dataset size: {len(train_Tdataset)}")
     print(f"Test dataset size: {len(test_Tdataset)}")
-    
+
     # TEST ONLY
     for i in range(len(tokenized_datasets)):
         try:
@@ -111,7 +104,6 @@ def main():
         except KeyError as e:
             print(f"KeyError at index {i}: {e}")
 
-    
     training_args = TrainingArguments(
         output_dir=args.output_dir,
         evaluation_strategy="steps",
