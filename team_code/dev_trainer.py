@@ -56,7 +56,7 @@ def main():
     def preprocess_function(ex):
         conversations = ex.get("conversations", [])
         if not isinstance(conversations, list):
-            return {}
+            return None
 
         question = next(
             (
@@ -75,19 +75,17 @@ def main():
             None,
         )
 
-        if question and correct_answer and ex.get("video"):
-            inputs = tokenizer_multimodal_token(
-                text=question,
-                video_paths=ex.get("video"),
-                audio_paths=None,
-                tokenizer=tokenizer,
-            )
-            inputs["labels"] = tokenizer(correct_answer, return_tensors="pt")[
-                "input_ids"
-            ]
-            return inputs
-        else:
-            return {}
+        if not question and correct_answer and ex.get("video"):
+            return None
+        
+        inputs = tokenizer_multimodal_token(
+            text=question,
+            video_paths=ex.get("video"),
+            audio_paths=None,
+            tokenizer=tokenizer,
+        )
+        inputs["labels"] = tokenizer(correct_answer, return_tensors="pt")["input_ids"]
+        return inputs
 
     tokenized_datasets = dataset.map(preprocess_function, batched=True)
     train_Tdataset, test_Tdataset = train_test_split(tokenized_datasets, test_size=0.3)
