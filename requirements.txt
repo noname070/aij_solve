@@ -6,6 +6,7 @@ torchaudio
 torchvideo
 transformers==4.41.2
 tokenizers==0.19.1
+evaluate
 # deepspeed==0.13.1
 accelerate==0.26.1
 # peft==0.4.0

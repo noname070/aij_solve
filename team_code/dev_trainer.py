@@ -1,5 +1,5 @@
 import argparse
-from datasets import load_dataset, load_metric
+from datasets import load_dataset
 from transformers import (
     AutoTokenizer,
     Trainer,
@@ -7,6 +7,7 @@ from transformers import (
     AutoModelForSequenceClassification,
 )
 from transformers import TrainerCallback
+import evaluate
 
 from mm_utils import tokenizer_multimodal_token
 from omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
@@ -24,9 +25,9 @@ def parse_args():
     return parser.parse_args()
 
 
-bleu = load_metric("bleu", trust_remote_code=True)
-rouge = load_metric("rouge", trust_remote_code=True)
-meteor = load_metric("meteor", trust_remote_code=True)
+bleu = evaluate.load("bleu", trust_remote_code=True)
+rouge = evaluate.load("rouge", trust_remote_code=True)
+meteor = evaluate.load("meteor", trust_remote_code=True)
 
 
 def compute_metrics(eval_pred, tokenizer):
