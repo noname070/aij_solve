@@ -28,7 +28,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained("ridger/MMfreeLM-2.7B")
     model = HGRNBitMultimodalModel(config=HGRNBitMultimodalConfig())
 
-    dataset = load_dataset("lmms-lab/LLaVA-Video-178K")
+    dataset = load_dataset("lmms-lab/LLaVA-Video-178K", "0_30_s_academic_v0_1")
 
     def preprocess_function(ex):
         inputs = tokenizer_multimodal_token(
