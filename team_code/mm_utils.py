@@ -13,7 +13,6 @@ import torchaudio
 import numpy as np
 from PIL import Image
 from decord import VideoReader, cpu
-from moviepy.editor import VideoFileClip
 from transformers import StoppingCriteria
 
 from team_code.constants import NUM_FRAMES, MAX_FRAMES, NUM_FRAMES_PER_SECOND, MODAL_INDEX_MAP, DEFAULT_IMAGE_TOKEN

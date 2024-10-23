@@ -1,4 +1,4 @@
 .vscode/
 .DS_Store
-run_train.sh
+train_runner.sh
 Dockerfile_prod

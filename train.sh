@@ -13,5 +13,5 @@ else
 fi
 
 echo "running training..."
-python3 ./team_code/dev_trainer.py --epochs $EPOCHS --batch_size $BATCH_SIZE --learning_rate $LEARNING_RATE
+python3 team_code/dev_trainer.py --epochs $EPOCHS --batch_size $BATCH_SIZE --learning_rate $LEARNING_RATE
 tensorboard --logdir=./runs --host 0.0.0.0
