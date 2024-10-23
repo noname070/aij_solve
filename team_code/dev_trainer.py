@@ -96,6 +96,9 @@ def main():
 
     print(f"Train dataset size: {len(train_Tdataset)}")
     print(f"Test dataset size: {len(test_Tdataset)}")
+    
+    print(f"Train example : {train_Tdataset[0]} ")
+    print(f"Test example : {train_Tdataset[0]} ")
 
     # TEST ONLY
     for i in range(len(tokenized_datasets)):
