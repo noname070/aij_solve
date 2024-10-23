@@ -13,7 +13,7 @@ from PIL import Image
 from decord import VideoReader, cpu
 from transformers import StoppingCriteria
 
-from team_code.constants import (
+from constants import (
     NUM_FRAMES,
     MAX_FRAMES,
     NUM_FRAMES_PER_SECOND,

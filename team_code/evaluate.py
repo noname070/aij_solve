@@ -10,7 +10,7 @@ import torch
 from transformers.utils import logging
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-from team_code.mm_utils import (
+from mm_utils import (
     process_image,
     process_video,
     process_audio,
@@ -18,7 +18,7 @@ from team_code.mm_utils import (
     get_model_name_from_path,
     KeywordsStoppingCriteria,
 )
-from team_code.constants import (
+from constants import (
     NUM_FRAMES,
     DEFAULT_IMAGE_TOKEN,
     DEFAULT_VIDEO_TOKEN,
