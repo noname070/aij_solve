@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from rmsnorm import RMSNormLinear, RMSNorm
 
+
 def activation_quant(x):
     """
     Per-token quantization to 8 bits. No grouping is needed for quantization.
@@ -36,7 +37,6 @@ def weight_quant(w):
     # Quantize and then de-quantize the tensor
     u = (w * scale).round().clamp_(-1, 1) / scale
     return u
-
 
 
 class BitLinear(nn.Linear):

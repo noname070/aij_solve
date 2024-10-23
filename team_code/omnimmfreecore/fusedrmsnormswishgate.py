@@ -15,10 +15,13 @@ import torch
 import torch.nn.functional as F
 import triton
 import triton.language as tl
-from torch.cuda.amp import custom_bwd, custom_fwd
+
+# from torch.cuda.amp import custom_bwd, custom_fwd
 
 
-def layer_norm_ref(x, weight, bias, residual=None, eps=1e-6, prenorm=False, upcast=False):
+def layer_norm_ref(
+    x, weight, bias, residual=None, eps=1e-6, prenorm=False, upcast=False
+):
     dtype = x.dtype
     if upcast:
         weight = weight.float()
@@ -28,9 +31,9 @@ def layer_norm_ref(x, weight, bias, residual=None, eps=1e-6, prenorm=False, upca
         residual = residual.float() if residual is not None else residual
     if residual is not None:
         x = (x + residual).to(x.dtype)
-    out = F.layer_norm(x.to(weight.dtype), x.shape[-1:], weight=weight, bias=bias, eps=eps).to(
-        dtype
-    )
+    out = F.layer_norm(
+        x.to(weight.dtype), x.shape[-1:], weight=weight, bias=bias, eps=eps
+    ).to(dtype)
     return out if not prenorm else (out, x)
 
 
@@ -45,8 +48,7 @@ def rms_norm_ref(x, weight, bias, residual=None, eps=1e-6, prenorm=False, upcast
     if residual is not None:
         x = (x + residual).to(x.dtype)
     rstd = 1 / torch.sqrt((x.square()).mean(dim=-1, keepdim=True) + eps)
-    out = (x * rstd * weight) + \
-        bias if bias is not None else (x * rstd * weight)
+    out = (x * rstd * weight) + bias if bias is not None else (x * rstd * weight)
     out = out.to(dtype)
     return out if not prenorm else (out, x)
 
@@ -67,7 +69,7 @@ def rms_norm_ref(x, weight, bias, residual=None, eps=1e-6, prenorm=False, upcast
 @triton.jit
 def _layer_norm_fwd_1pass_kernel(
     X,  # pointer to the input
-    O, # pointer to the gate
+    O,  # pointer to the gate
     Y,  # pointer to the output
     W,  # pointer to the weights
     B,  # pointer to the biases
@@ -100,8 +102,7 @@ def _layer_norm_fwd_1pass_kernel(
     cols = tl.arange(0, BLOCK_N)
     x = tl.load(X + cols, mask=cols < N, other=0.0).to(tl.float32)
     if HAS_RESIDUAL:
-        residual = tl.load(RESIDUAL + cols, mask=cols <
-                           N, other=0.0).to(tl.float32)
+        residual = tl.load(RESIDUAL + cols, mask=cols < N, other=0.0).to(tl.float32)
         x += residual
     if STORE_RESIDUAL_OUT:
         tl.store(RESIDUAL_OUT + cols, x, mask=cols < N)
@@ -126,13 +127,21 @@ def _layer_norm_fwd_1pass_kernel(
     # Swish output gate
     o = tl.load(O + cols, mask=cols < N, other=0.0).to(tl.float32)
     y = y * o * tl.sigmoid(o)
-    
+
     # Write output
     tl.store(Y + cols, y, mask=mask)
 
 
 def _layer_norm_fwd(
-    x, o, weight, bias, eps, residual=None, out_dtype=None, residual_dtype=None, is_rms_norm=False
+    x,
+    o,
+    weight,
+    bias,
+    eps,
+    residual=None,
+    out_dtype=None,
+    residual_dtype=None,
+    is_rms_norm=False,
 ):
     if residual is not None:
         residual_dtype = residual.dtype
@@ -149,20 +158,24 @@ def _layer_norm_fwd(
     # allocate output
     y = torch.empty_like(x, dtype=x.dtype if out_dtype is None else out_dtype)
     assert y.stride(-1) == 1
-    if residual is not None or (residual_dtype is not None and residual_dtype != x.dtype):
+    if residual is not None or (
+        residual_dtype is not None and residual_dtype != x.dtype
+    ):
         residual_out = torch.empty(M, N, device=x.device, dtype=residual_dtype)
         assert residual_out.stride(-1) == 1
     else:
         residual_out = None
-    mean = torch.empty((M,), dtype=torch.float32,
-                       device="cuda") if not is_rms_norm else None
+    mean = (
+        torch.empty((M,), dtype=torch.float32, device="cuda")
+        if not is_rms_norm
+        else None
+    )
     rstd = torch.empty((M,), dtype=torch.float32, device="cuda")
     # Less than 64KB per feature: enqueue fused kernel
     MAX_FUSED_SIZE = 65536 // x.element_size()
     BLOCK_N = min(MAX_FUSED_SIZE, triton.next_power_of_2(N))
     if N > BLOCK_N:
-        raise RuntimeError(
-            "This layer norm doesn't support feature dim >= 64KB.")
+        raise RuntimeError("This layer norm doesn't support feature dim >= 64KB.")
     # heuristics for number of warps
     with torch.cuda.device(x.device.index):
         _layer_norm_fwd_1pass_kernel[(M,)](
@@ -267,7 +280,7 @@ def _layer_norm_bwd_kernel(
         x = tl.load(X + cols, mask=mask, other=0).to(tl.float32)
         o = tl.load(O + cols, mask=mask, other=0).to(tl.float32)
         dy = tl.load(DY + cols, mask=mask, other=0).to(tl.float32)
-        
+
         if not IS_RMS_NORM:
             mean = tl.load(Mean + row)
         rstd = tl.load(Rstd + row)
@@ -277,7 +290,7 @@ def _layer_norm_bwd_kernel(
         if RECOMPUTE_OUTPUT:
             y = xhat * w + b if HAS_BIAS else xhat * w
             tl.store(Y + cols, y, mask=mask)
-            
+
         y = xhat * w + b if HAS_BIAS else xhat * w
         sigmoid_o = tl.sigmoid(o)
         do = dy * y * (sigmoid_o + o * sigmoid_o * (1 - sigmoid_o))
@@ -313,7 +326,7 @@ def _layer_norm_bwd_kernel(
         DY += stride_dy_row
         DX += stride_dx_row
         DO += stride_dx_row
-        
+
     tl.store(DW + row_block_id * N + cols, dw, mask=mask)
     if HAS_BIAS:
         tl.store(DB + row_block_id * N + cols, db, mask=mask)
@@ -322,7 +335,7 @@ def _layer_norm_bwd_kernel(
 def _layer_norm_bwd(
     dy,
     x,
-    o, 
+    o,
     weight,
     bias,
     eps,
@@ -357,17 +370,18 @@ def _layer_norm_bwd(
         if x_dtype is None
         else torch.empty(M, N, dtype=x_dtype, device=x.device)
     )
-    dresidual_in = torch.empty_like(
-        x) if has_residual and dx.dtype != x.dtype else None
-    y = torch.empty(M, N, dtype=dy.dtype,
-                    device=dy.device) if recompute_output else None
+    dresidual_in = torch.empty_like(x) if has_residual and dx.dtype != x.dtype else None
+    y = (
+        torch.empty(M, N, dtype=dy.dtype, device=dy.device)
+        if recompute_output
+        else None
+    )
 
     # Less than 64KB per feature: enqueue fused kernel
     MAX_FUSED_SIZE = 65536 // x.element_size()
     BLOCK_N = min(MAX_FUSED_SIZE, triton.next_power_of_2(N))
     if N > BLOCK_N:
-        raise RuntimeError(
-            "This layer norm doesn't support feature dim >= 64KB.")
+        raise RuntimeError("This layer norm doesn't support feature dim >= 64KB.")
     sm_count = torch.cuda.get_device_properties(x.device).multi_processor_count
     _dw = torch.empty((sm_count, N), dtype=torch.float32, device=weight.device)
     _db = (
@@ -414,7 +428,11 @@ def _layer_norm_bwd(
     # Don't need to compute dresidual_in separately in this case
     if has_residual and dx.dtype == x.dtype:
         dresidual_in = dx
-    return (dx, do, dw, db, dresidual_in) if not recompute_output else (dx, do, dw, db, dresidual_in, y)
+    return (
+        (dx, do, dw, db, dresidual_in)
+        if not recompute_output
+        else (dx, do, dw, db, dresidual_in, y)
+    )
 
 
 class LayerNormFn(torch.autograd.Function):
@@ -422,7 +440,7 @@ class LayerNormFn(torch.autograd.Function):
     def forward(
         ctx,
         x,
-        o, 
+        o,
         weight,
         bias,
         residual=None,
@@ -452,7 +470,14 @@ class LayerNormFn(torch.autograd.Function):
             else (torch.float32 if residual_in_fp32 else None)
         )
         y, mean, rstd, residual_out = _layer_norm_fwd(
-            x, o, weight, bias, eps, residual, residual_dtype=residual_dtype, is_rms_norm=is_rms_norm
+            x,
+            o,
+            weight,
+            bias,
+            eps,
+            residual,
+            residual_dtype=residual_dtype,
+            is_rms_norm=is_rms_norm,
         )
         ctx.save_for_backward(residual_out, o, weight, bias, mean, rstd)
         ctx.x_shape_og = x_shape_og
@@ -507,8 +532,12 @@ class LayerNormFn(torch.autograd.Function):
         )
 
 
-def rms_norm_fn(x, o, weight, bias, residual=None, prenorm=False, residual_in_fp32=False, eps=1e-6):
-    return LayerNormFn.apply(x, o, weight, bias, residual, eps, prenorm, residual_in_fp32, True)
+def rms_norm_fn(
+    x, o, weight, bias, residual=None, prenorm=False, residual_in_fp32=False, eps=1e-6
+):
+    return LayerNormFn.apply(
+        x, o, weight, bias, residual, eps, prenorm, residual_in_fp32, True
+    )
 
 
 class FusedRMSNormSwishGate(torch.nn.Module):
@@ -534,5 +563,3 @@ class FusedRMSNormSwishGate(torch.nn.Module):
             prenorm=prenorm,
             residual_in_fp32=residual_in_fp32,
         )
-
-

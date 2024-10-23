@@ -1,5 +1,3 @@
-import math
-import warnings
 from typing import List, Optional, Tuple, Union
 
 import torch
@@ -9,6 +7,7 @@ import torch.utils.checkpoint
 from team_code.omnimmfreecore.bitnet import BitLinear
 from activation import ACT2FN, swiglu
 
+
 class HGRNBitMLP(nn.Module):
 
     def __init__(
@@ -16,7 +15,7 @@ class HGRNBitMLP(nn.Module):
         hidden_size: int,
         hidden_ratio: Optional[int] = None,
         intermediate_size: Optional[int] = None,
-        hidden_act: str = 'swish'
+        hidden_act: str = "swish",
     ):
         super().__init__()
 
@@ -31,10 +30,12 @@ class HGRNBitMLP(nn.Module):
         self.hidden_ratio = hidden_ratio
         self.intermediate_size = intermediate_size
 
-        self.gate_proj = BitLinear(self.hidden_size, self.intermediate_size * 2, bias=False)
-        #self.gate_proj_bit = RMSNormLinear(self.hidden_size)
+        self.gate_proj = BitLinear(
+            self.hidden_size, self.intermediate_size * 2, bias=False
+        )
+        # self.gate_proj_bit = RMSNormLinear(self.hidden_size)
         self.down_proj = BitLinear(self.intermediate_size, self.hidden_size, bias=False)
-        #self.gate_proj_bit = RMSNormLinear(self.hidden_size)
+        # self.gate_proj_bit = RMSNormLinear(self.hidden_size)
         self.act_fn = ACT2FN[hidden_act]
 
     def forward(self, x):

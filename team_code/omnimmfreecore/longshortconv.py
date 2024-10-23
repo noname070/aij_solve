@@ -14,7 +14,7 @@ from einops import rearrange
 from activation import ACT2FN
 
 try:
-    from causal_conv1d import causal_conv1d_fn, causal_conv1d_update # type: ignore
+    from causal_conv1d import causal_conv1d_fn, causal_conv1d_update  # type: ignore
 except ImportError:
     causal_conv1d_fn = None
     causal_conv1d_update = None
@@ -52,53 +52,60 @@ class ShortConvolution(nn.Conv1d):
         hidden_size: int,
         kernel_size: int,
         bias: bool = False,
-        activation: Optional[str] = 'silu',
-        use_causal_conv: Optional[bool] = True
+        activation: Optional[str] = "silu",
+        use_causal_conv: Optional[bool] = True,
     ):
-        super().__init__(in_channels=hidden_size,
-                         out_channels=hidden_size,
-                         kernel_size=kernel_size,
-                         groups=hidden_size,
-                         bias=bias,
-                         padding=kernel_size - 1)
+        super().__init__(
+            in_channels=hidden_size,
+            out_channels=hidden_size,
+            kernel_size=kernel_size,
+            groups=hidden_size,
+            bias=bias,
+            padding=kernel_size - 1,
+        )
 
         self.hidden_size = hidden_size
         self.activation = None
         if activation is not None:
-            assert activation in ['silu', 'swish'], f"Activation `{activation}` not supported yet."
+            assert activation in [
+                "silu",
+                "swish",
+            ], f"Activation `{activation}` not supported yet."
             self.activation = activation
 
         if use_causal_conv:
             if causal_conv1d_fn is None:
-                warnings.warn("Please install `causal-conv1d` to use causal convolutions, setting `use_causal_conv` to False.")
+                warnings.warn(
+                    "Please install `causal-conv1d` to use causal convolutions, setting `use_causal_conv` to False."
+                )
                 use_causal_conv = False
         self.use_causal_conv = use_causal_conv
 
     def extra_repr(self):
-        s = ('{in_channels}, {out_channels}, kernel_size={kernel_size}'
-             ', stride={stride}')
+        s = (
+            "{in_channels}, {out_channels}, kernel_size={kernel_size}"
+            ", stride={stride}"
+        )
         if self.padding != (0,) * len(self.padding):
-            s += ', padding={padding}'
+            s += ", padding={padding}"
         if self.dilation != (1,) * len(self.dilation):
-            s += ', dilation={dilation}'
+            s += ", dilation={dilation}"
         if self.output_padding != (0,) * len(self.output_padding):
-            s += ', output_padding={output_padding}'
+            s += ", output_padding={output_padding}"
         if self.groups != 1:
-            s += ', groups={groups}'
+            s += ", groups={groups}"
         if self.bias is None:
-            s += ', bias=False'
-        if self.padding_mode != 'zeros':
-            s += ', padding_mode={padding_mode}'
+            s += ", bias=False"
+        if self.padding_mode != "zeros":
+            s += ", padding_mode={padding_mode}"
         if self.activation is not None:
-            s += ', activation={activation}'
+            s += ", activation={activation}"
         if not self.use_causal_conv:
-            s += ', use_causal_conv={use_causal_conv}'
+            s += ", use_causal_conv={use_causal_conv}"
         return s.format(**self.__dict__)
 
     def forward(
-        self,
-        x: torch.Tensor,
-        cache: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, cache: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Args:
@@ -112,7 +119,9 @@ class ShortConvolution(nn.Conv1d):
         """
 
         if not next(self.parameters()).is_cuda:
-            warnings.warn("CUDA is required for using causal convolutions, setting `use_causal_conv` to False.")
+            warnings.warn(
+                "CUDA is required for using causal convolutions, setting `use_causal_conv` to False."
+            )
             self.use_causal_conv = False
         if cache is not None and x.shape[1] == 1:
             return self.step(x, cache)
@@ -125,16 +134,12 @@ class ShortConvolution(nn.Conv1d):
                 activation=self.activation,
             )
         else:
-            x = self._conv_forward(x, self.weight, self.bias)[..., :x.shape[-1]]
+            x = self._conv_forward(x, self.weight, self.bias)[..., : x.shape[-1]]
             if self.activation is not None:
                 x = ACT2FN[self.activation](x)
         return rearrange(x, "b d l -> b l d")
 
-    def step(
-        self,
-        x: torch.Tensor,
-        cache: torch.Tensor
-    ):
+    def step(self, x: torch.Tensor, cache: torch.Tensor):
         assert x.shape[1] == 1, "Only support decoding with 1 token at a time for now"
 
         x = x.squeeze(1)
@@ -188,7 +193,9 @@ class LongConvolution(nn.Module):
         """
         super().__init__()
         self.hidden_size = hidden_size
-        self.filter = nn.Parameter(torch.randn(self.hidden_size, l_max), requires_grad=True)
+        self.filter = nn.Parameter(
+            torch.randn(self.hidden_size, l_max), requires_grad=True
+        )
 
     def forward(self, x: torch.Tensor, *args, **kwargs):
         """

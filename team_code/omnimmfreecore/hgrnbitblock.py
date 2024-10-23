@@ -1,5 +1,3 @@
-import math
-import warnings
 from typing import List, Optional, Tuple, Union
 
 import torch
@@ -12,12 +10,15 @@ from hgrnbitattention import HGRNBitAttention
 
 from .config import HGRNBitConfig
 
+
 class HGRNBitBlock(nn.Module):
     def __init__(self, config: HGRNBitConfig, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
 
-        self.attn_norm = RMSNorm(hidden_size=config.hidden_size, eps=config.rms_norm_eps)
+        self.attn_norm = RMSNorm(
+            hidden_size=config.hidden_size, eps=config.rms_norm_eps
+        )
         self.attn = HGRNBitAttention(
             mode=config.attn_mode,
             hidden_size=config.hidden_size,
@@ -27,14 +28,14 @@ class HGRNBitBlock(nn.Module):
             conv_size=config.conv_size,
             share_conv_kernel=config.share_conv_kernel,
             layernorm_eps=config.rms_norm_eps,
-            layer_idx=layer_idx
+            layer_idx=layer_idx,
         )
         self.mlp_norm = RMSNorm(hidden_size=config.hidden_size, eps=config.rms_norm_eps)
         self.mlp = HGRNBitMLP(
             hidden_size=config.hidden_size,
             hidden_ratio=config.hidden_ratio,
             intermediate_size=config.intermediate_size,
-            hidden_act=config.hidden_act
+            hidden_act=config.hidden_act,
         )
 
     def forward(
@@ -46,7 +47,9 @@ class HGRNBitBlock(nn.Module):
         output_attentions: Optional[bool] = False,
         lower_bound: Optional[torch.Tensor] = False,
         **kwargs,
-    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+    ) -> Tuple[
+        torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]
+    ]:
         residual = hidden_states
         hidden_states = self.attn_norm(hidden_states)
         hidden_states, attentions, past_key_values = self.attn(
@@ -55,7 +58,7 @@ class HGRNBitBlock(nn.Module):
             past_key_values=past_key_values,
             use_cache=use_cache,
             output_attentions=output_attentions,
-            lower_bound=lower_bound
+            lower_bound=lower_bound,
         )
         hidden_states, residual = self.mlp_norm(hidden_states, residual, True)
         hidden_states = self.mlp(hidden_states)
@@ -64,4 +67,3 @@ class HGRNBitBlock(nn.Module):
         outputs = (hidden_states, attentions, past_key_values)
 
         return outputs
-

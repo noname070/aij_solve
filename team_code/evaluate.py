@@ -1,5 +1,4 @@
 import os
-import sys
 
 os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
@@ -10,7 +9,7 @@ from typing import Optional, Dict, Any
 
 import torch
 from transformers.utils import logging
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from team_code.mm_utils import (
     process_image,

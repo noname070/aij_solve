@@ -80,7 +80,7 @@ def _layer_norm_fwd_quant_kernel(
     HAS_RESIDUAL: tl.constexpr,
     STORE_RESIDUAL_OUT: tl.constexpr,
     HAS_WEIGHT: tl.constexpr,
-    HAS_BIAS: tl.constexpr
+    HAS_BIAS: tl.constexpr,
 ):
     # Map the program id to the row of X and Y it should compute.
     row = tl.program_id(0)
@@ -94,8 +94,7 @@ def _layer_norm_fwd_quant_kernel(
     cols = tl.arange(0, BLOCK_N)
     x = tl.load(X + cols, mask=cols < N, other=0.0).to(tl.float32)
     if HAS_RESIDUAL:
-        residual = tl.load(RESIDUAL + cols, mask=cols <
-                           N, other=0.0).to(tl.float32)
+        residual = tl.load(RESIDUAL + cols, mask=cols < N, other=0.0).to(tl.float32)
         x += residual
     if STORE_RESIDUAL_OUT:
         tl.store(RESIDUAL_OUT + cols, x, mask=cols < N)
@@ -132,7 +131,14 @@ def _layer_norm_fwd_quant_kernel(
 
 
 def _layer_norm_fwd_quant(
-    x, weight, bias, eps, residual=None, out_dtype=None, residual_dtype=None, is_rms_norm=False
+    x,
+    weight,
+    bias,
+    eps,
+    residual=None,
+    out_dtype=None,
+    residual_dtype=None,
+    is_rms_norm=False,
 ):
     if residual is not None:
         residual_dtype = residual.dtype
@@ -150,12 +156,18 @@ def _layer_norm_fwd_quant(
     # allocate output
     y = torch.empty_like(x, dtype=x.dtype if out_dtype is None else out_dtype)
     assert y.stride(-1) == 1
-    if residual is not None or (residual_dtype is not None and residual_dtype != x.dtype):
+    if residual is not None or (
+        residual_dtype is not None and residual_dtype != x.dtype
+    ):
         residual_out = torch.empty(M, N, device=x.device, dtype=residual_dtype)
         assert residual_out.stride(-1) == 1
     else:
         residual_out = None
-    mean = torch.empty((M,), dtype=torch.float32, device="cuda") if not is_rms_norm else None
+    mean = (
+        torch.empty((M,), dtype=torch.float32, device="cuda")
+        if not is_rms_norm
+        else None
+    )
     rstd = torch.empty((M,), dtype=torch.float32, device="cuda")
     # Less than 64KB per feature: enqueue fused kernel
     MAX_FUSED_SIZE = 65536 // x.element_size()
@@ -350,17 +362,18 @@ def _layer_norm_bwd(
         if x_dtype is None
         else torch.empty(M, N, dtype=x_dtype, device=x.device)
     )
-    dresidual_in = torch.empty_like(
-        x) if has_residual and dx.dtype != x.dtype else None
-    y = torch.empty(M, N, dtype=dy.dtype,
-                    device=dy.device) if recompute_output else None
+    dresidual_in = torch.empty_like(x) if has_residual and dx.dtype != x.dtype else None
+    y = (
+        torch.empty(M, N, dtype=dy.dtype, device=dy.device)
+        if recompute_output
+        else None
+    )
 
     # Less than 64KB per feature: enqueue fused kernel
     MAX_FUSED_SIZE = 65536 // x.element_size()
     BLOCK_N = min(MAX_FUSED_SIZE, triton.next_power_of_2(N))
     if N > BLOCK_N:
-        raise RuntimeError(
-            "This layer norm doesn't support feature dim >= 64KB.")
+        raise RuntimeError("This layer norm doesn't support feature dim >= 64KB.")
     sm_count = torch.cuda.get_device_properties(x.device).multi_processor_count
     _dw = (
         torch.empty((sm_count, N), dtype=torch.float32, device=weight.device)
@@ -410,7 +423,11 @@ def _layer_norm_bwd(
     # Don't need to compute dresidual_in separately in this case
     if has_residual and dx.dtype == x.dtype:
         dresidual_in = dx
-    return (dx, dw, db, dresidual_in) if not recompute_output else (dx, dw, db, dresidual_in, y)
+    return (
+        (dx, dw, db, dresidual_in)
+        if not recompute_output
+        else (dx, dw, db, dresidual_in, y)
+    )
 
 
 class LayerNormLinearQuantFn(torch.autograd.Function):
@@ -447,17 +464,25 @@ class LayerNormLinearQuantFn(torch.autograd.Function):
             norm_bias,
             eps,
             residual,
-            out_dtype=None if not torch.is_autocast_enabled() else torch.get_autocast_gpu_dtype(),
+            out_dtype=(
+                None
+                if not torch.is_autocast_enabled()
+                else torch.get_autocast_gpu_dtype()
+            ),
             residual_dtype=residual_dtype,
             is_rms_norm=is_rms_norm,
         )
         y = y.reshape(x_shape_og)
-        dtype = torch.get_autocast_gpu_dtype() if torch.is_autocast_enabled() else y.dtype
+        dtype = (
+            torch.get_autocast_gpu_dtype() if torch.is_autocast_enabled() else y.dtype
+        )
         linear_weight = weight_quant(linear_weight).to(dtype)
         linear_bias = linear_bias.to(dtype) if linear_bias is not None else None
         out = F.linear(y.to(linear_weight.dtype), linear_weight, linear_bias)
         # We don't store y, will be recomputed in the backward pass to save memory
-        ctx.save_for_backward(residual_out, norm_weight, norm_bias, linear_weight, mean, rstd)
+        ctx.save_for_backward(
+            residual_out, norm_weight, norm_bias, linear_weight, mean, rstd
+        )
         ctx.x_shape_og = x_shape_og
         ctx.eps = eps
         ctx.is_rms_norm = is_rms_norm
@@ -493,7 +518,7 @@ class LayerNormLinearQuantFn(torch.autograd.Function):
             ctx.has_residual,
             ctx.is_rms_norm,
             x_dtype=ctx.x_dtype,
-            recompute_output=True
+            recompute_output=True,
         )
         dlinear_weight = torch.einsum("bo,bi->oi", dout, y)
         return (
@@ -606,5 +631,5 @@ class FusedBitLinear(BitLinear):
             self.norm.bias,
             self.weight,
             self.bias,
-            is_rms_norm=True
+            is_rms_norm=True,
         )

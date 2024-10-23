@@ -18,9 +18,8 @@ import re
 import einops
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from timm.models.regnet import RegStage
-from timm.models.layers import LayerNorm, LayerNorm2d
+from timm.models.layers import LayerNorm2d
 from transformers import TRANSFORMERS_CACHE
 
 

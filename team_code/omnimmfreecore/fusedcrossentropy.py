@@ -48,9 +48,12 @@ def cross_entropy_fwd_kernel(
     logits_ptr = logits_ptr + row_idx * logits_row_stride.to(tl.int64)
     col_offsets = col_block_idx * BLOCK_SIZE + tl.arange(0, BLOCK_SIZE)
     label_idx = tl.load(labels_ptr + row_idx)
-    logits = tl.load(logits_ptr + col_offsets, mask=col_offsets < n_cols, other=-float("inf")).to(
-        tl.float32
-    ) * logit_scale
+    logits = (
+        tl.load(
+            logits_ptr + col_offsets, mask=col_offsets < n_cols, other=-float("inf")
+        ).to(tl.float32)
+        * logit_scale
+    )
     max_logits = tl.max(logits, 0)
     if HAS_SMOOTHING:
         sum_logits = tl.sum(tl.where(col_offsets < n_cols, logits, 0.0), 0)
@@ -76,7 +79,9 @@ def cross_entropy_fwd_kernel(
         else:
             # If label is out of bounds, we set the CE loss to 0.0. But we still want the smoothing loss
             if HAS_SMOOTHING:
-                loss = smoothing * ((lse if not SPLIT else 0.0) - sum_logits / total_classes)
+                loss = smoothing * (
+                    (lse if not SPLIT else 0.0) - sum_logits / total_classes
+                )
             else:
                 loss = 0.0
         if not SPLIT:
@@ -124,19 +129,29 @@ def cross_entropy_bwd_kernel(
         dloss = tl.load(dloss_ptr + row_idx * dloss_row_stride)
     else:
         dloss = 0.0
-    logits = tl.load(logits_ptr + col_offsets, mask=col_offsets < n_cols, other=-float("inf")).to(
-        tl.float32
-    ) * logit_scale
+    logits = (
+        tl.load(
+            logits_ptr + col_offsets, mask=col_offsets < n_cols, other=-float("inf")
+        ).to(tl.float32)
+        * logit_scale
+    )
     lse = tl.load(lse_ptr + row_idx)
     probs = tl.exp(logits - lse)
     probs += 2.0 * lse_square_scale * lse * probs
     label_idx -= class_start_idx
     if HAS_SMOOTHING:
         smooth_negative = smoothing / total_classes
-        probs = tl.where(col_offsets == label_idx, probs - (1 - smoothing), probs) - smooth_negative
+        probs = (
+            tl.where(col_offsets == label_idx, probs - (1 - smoothing), probs)
+            - smooth_negative
+        )
     else:
         probs = tl.where(col_offsets == label_idx, probs - 1.0, probs)
-    tl.store(dlogits_ptr + col_offsets, (dloss * logit_scale) * probs, mask=col_offsets < n_cols)
+    tl.store(
+        dlogits_ptr + col_offsets,
+        (dloss * logit_scale) * probs,
+        mask=col_offsets < n_cols,
+    )
 
 
 class CrossEntropyLossFunction(torch.autograd.Function):
@@ -155,7 +170,11 @@ class CrossEntropyLossFunction(torch.autograd.Function):
     ):
         n_rows, n_cols = logits.shape
         assert labels.shape == (n_rows,)
-        world_size = 1 if process_group is None else torch.distributed.get_world_size(process_group)
+        world_size = (
+            1
+            if process_group is None
+            else torch.distributed.get_world_size(process_group)
+        )
         total_classes = world_size * n_cols
         rank = 0 if process_group is None else torch.distributed.get_rank(process_group)
         class_start_idx = rank * n_cols
@@ -213,10 +232,17 @@ class CrossEntropyLossFunction(torch.autograd.Function):
                 lse = torch.logsumexp(lse, dim=0)
                 losses = losses.sum(dim=0)
             if world_size > 1:
-                lse_allgather = torch.empty(world_size, n_rows, dtype=lse.dtype, device=lse.device)
-                torch.distributed.all_gather_into_tensor(lse_allgather, lse, group=process_group)
+                lse_allgather = torch.empty(
+                    world_size, n_rows, dtype=lse.dtype, device=lse.device
+                )
+                torch.distributed.all_gather_into_tensor(
+                    lse_allgather, lse, group=process_group
+                )
                 handle_losses = torch.distributed.all_reduce(
-                    losses, op=torch.distributed.ReduceOp.SUM, group=process_group, async_op=True
+                    losses,
+                    op=torch.distributed.ReduceOp.SUM,
+                    group=process_group,
+                    async_op=True,
                 )
                 lse = torch.logsumexp(lse_allgather, dim=0)
                 handle_losses.wait()
@@ -255,7 +281,10 @@ class CrossEntropyLossFunction(torch.autograd.Function):
         n_rows, n_cols = logits.shape
         BLOCK_SIZE = min(triton.next_power_of_2(n_cols), 4 * 1024)
         num_warps = 4 if BLOCK_SIZE < 2048 else (8 if BLOCK_SIZE < 8192 else 16)
-        def grid(META): return (n_rows, triton.cdiv(n_cols, META["BLOCK_SIZE"]))  # noqa
+
+        def grid(META):
+            return (n_rows, triton.cdiv(n_cols, META["BLOCK_SIZE"]))  # noqa
+
         # Need this, otherwise Triton tries to launch from cuda:0 and we get
         # ValueError: Pointer argument (at 0) cannot be accessed from Triton (cpu tensor?)
         with torch.cuda.device(logits.device.index):
@@ -348,7 +377,9 @@ class FusedCrossEntropyLoss(nn.Module):
         """
         super().__init__()
         if reduction not in ["mean", "none", "sum"]:
-            raise NotImplementedError("Only support reduction = 'mean' or 'none' or 'sum'")
+            raise NotImplementedError(
+                "Only support reduction = 'mean' or 'none' or 'sum'"
+            )
         self.ignore_index = ignore_index
         self.reduction = reduction
         self.label_smoothing = label_smoothing

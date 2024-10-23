@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import warnings
 from typing import List, Optional, Tuple, Union
 
 import torch
@@ -22,7 +21,7 @@ from config import HGRNBitMultimodalConfig
 from utils import RecurrentCache
 from rmsnorm import RMSNorm, RMSNormLinear
 from fusedcrossentropy import FusedCrossEntropyLoss
-from activation import swiglu, swiglu_linear
+from activation import swiglu
 from fusedbitnet import FusedBitLinear as BitLinear
 
 logger = logging.get_logger(__name__)
@@ -224,10 +223,10 @@ class HGRNBitMultimodalModel(HGRNBitMultimodalPreTrainedModel):
                 "At least one of the inputs (text, video, audio) must be provided."
             )
 
-        text_embeds  =   self.text_embeddings(input_ids)    if input_ids is not None else None
-        video_embeds =   self.video_proj(input_ids)         if video_ids is not None else None
-        audio_embeds =   self.audio_proj(input_ids)         if audio_ids is not None else None
-        
+        text_embeds = self.text_embeddings(input_ids) if input_ids is not None else None
+        video_embeds = self.video_proj(input_ids) if video_ids is not None else None
+        audio_embeds = self.audio_proj(input_ids) if audio_ids is not None else None
+
         if self.config.fusion_method == "concat":
             hidden_states = torch.cat(
                 [
@@ -238,7 +237,9 @@ class HGRNBitMultimodalModel(HGRNBitMultimodalPreTrainedModel):
                 dim=1,
             )
         else:
-            raise ValueError(f"Fusion method {self.config.fusion_method} not supported.")
+            raise ValueError(
+                f"Fusion method {self.config.fusion_method} not supported."
+            )
 
         if self.gradient_checkpointing and self.training:
             if use_cache:
@@ -283,6 +284,7 @@ class HGRNBitMultimodalModel(HGRNBitMultimodalPreTrainedModel):
             hidden_states=all_hidden_states,
             attentions=all_attns,
         )
+
 
 class HGRNBitForCausalLM(HGRNBitMultimodalPreTrainedModel):
     _tied_weights_keys = ["lm_head.weight"]
@@ -370,9 +372,19 @@ class HGRNBitForCausalLM(HGRNBitMultimodalPreTrainedModel):
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
 
-        output_attentions     =  output_attentions      if output_attentions     is not None else self.config.output_attentions
-        output_hidden_states  =  output_hidden_states   if output_hidden_states  is not None else self.config.output_hidden_states
-        return_dict           =  return_dict            if return_dict           is not None else self.config.use_return_dict
+        output_attentions = (
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
+        )
+        output_hidden_states = (
+            output_hidden_states
+            if output_hidden_states is not None
+            else self.config.output_hidden_states
+        )
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         outputs = self.model(
             input_ids=input_ids,
@@ -390,13 +402,19 @@ class HGRNBitForCausalLM(HGRNBitMultimodalPreTrainedModel):
 
         loss = None
         if labels is not None:
-            loss_fct = FusedCrossEntropyLoss(inplace_backward=True) if self.config.fuse_cross_entropy else \
-                       nn.CrossEntropyLoss()
+            loss_fct = (
+                FusedCrossEntropyLoss(inplace_backward=True)
+                if self.config.fuse_cross_entropy
+                else nn.CrossEntropyLoss()
+            )
 
             labels = labels.to(logits.device)
             labels = torch.cat(
-                (labels[..., 1:],
-                 torch.full_like(labels[:, :1], loss_fct.ignore_index), ), 1,
+                (
+                    labels[..., 1:],
+                    torch.full_like(labels[:, :1], loss_fct.ignore_index),
+                ),
+                1,
             )
 
             loss = loss_fct(logits.view(-1, self.config.vocab_size), labels.view(-1))

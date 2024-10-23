@@ -17,7 +17,7 @@ from longshortconv import ShortConvolution
 from activation import swiglu
 from fusedrechgrnfwdkernel import fused_recurrent_hgrn
 
-#from mmfreelm.ops.bitnet import BitLinear_Fuse as BitLinear
+# from mmfreelm.ops.bitnet import BitLinear_Fuse as BitLinear
 
 from team_code.omnimmfreecore.bitnet import BitLinear
 
@@ -26,7 +26,7 @@ class HGRNBitAttention(nn.Module):
 
     def __init__(
         self,
-        mode: str = 'fused_recurrent',
+        mode: str = "fused_recurrent",
         hidden_size: int = 1024,
         num_heads: Optional[int] = None,
         expand_ratio: Optional[int] = 1,
@@ -35,7 +35,7 @@ class HGRNBitAttention(nn.Module):
         conv_bias: bool = False,
         share_conv_kernel: bool = True,
         layernorm_eps: float = 1e-5,
-        layer_idx: int = None
+        layer_idx: int = None,
     ):
         super().__init__()
 
@@ -53,8 +53,10 @@ class HGRNBitAttention(nn.Module):
 
         self.layer_idx = layer_idx
 
-        assert mode in ['fused_recurrent'], f"Not suppoerted mode `{mode}`."
-        assert self.hidden_size % num_heads == 0, f"hidden size must be divisible by num_heads of {num_heads}"
+        assert mode in ["fused_recurrent"], f"Not suppoerted mode `{mode}`."
+        assert (
+            self.hidden_size % num_heads == 0
+        ), f"hidden size must be divisible by num_heads of {num_heads}"
 
         self.i_proj = BitLinear(hidden_size, self.input_dim, bias=False)
         self.f_proj = BitLinear(hidden_size, self.input_dim, bias=False)
@@ -63,11 +65,19 @@ class HGRNBitAttention(nn.Module):
         if use_short_conv:
             self.conv_size = conv_size
             if share_conv_kernel:
-                self.h_conv1d = ShortConvolution(hidden_size, conv_size, activation='silu')
+                self.h_conv1d = ShortConvolution(
+                    hidden_size, conv_size, activation="silu"
+                )
             else:
-                self.q_conv1d = ShortConvolution(self.input_dim, conv_size, activation='silu')
-                self.f_conv1d = ShortConvolution(self.input_dim, conv_size, activation='silu')
-                self.i_conv1d = ShortConvolution(self.input_dim, conv_size, activation='silu')
+                self.q_conv1d = ShortConvolution(
+                    self.input_dim, conv_size, activation="silu"
+                )
+                self.f_conv1d = ShortConvolution(
+                    self.input_dim, conv_size, activation="silu"
+                )
+                self.i_conv1d = ShortConvolution(
+                    self.input_dim, conv_size, activation="silu"
+                )
 
         self.g_norm = FusedRMSNormSwishGate(self.input_dim, layernorm_eps)
         self.o_proj = BitLinear(self.input_dim, hidden_size, bias=False)
@@ -78,7 +88,7 @@ class HGRNBitAttention(nn.Module):
         if getattr(module, "_is_hf_initialized", False):
             return
         if isinstance(module, (nn.Linear, BitLinear)):
-            nn.init.xavier_uniform_(module.weight, gain=2 ** -2.5)
+            nn.init.xavier_uniform_(module.weight, gain=2**-2.5)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
         module._is_hf_initialized = True
@@ -91,10 +101,10 @@ class HGRNBitAttention(nn.Module):
         use_cache: Optional[bool] = False,
         output_attentions: Optional[bool] = False,
         lower_bound: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Cache]]:
         # launching the triton kernel for just one token will actually be slower
-        mode = 'fused_recurrent' if hidden_states.shape[1] == 1 else self.mode
+        mode = "fused_recurrent" if hidden_states.shape[1] == 1 else self.mode
 
         last_state = past_key_values[self.layer_idx] if use_cache else None
         if self.use_short_conv:
@@ -107,8 +117,12 @@ class HGRNBitAttention(nn.Module):
             else:
                 conv_state_i = last_state[2] if use_cache else None
                 conv_state_f = last_state[1] if use_cache else None
-                i = self.i_conv1d(self.i_proj(hidden_states), attention_mask, conv_state_i)
-                f = self.f_conv1d(self.f_proj(hidden_states), attention_mask, conv_state_f)
+                i = self.i_conv1d(
+                    self.i_proj(hidden_states), attention_mask, conv_state_i
+                )
+                f = self.f_conv1d(
+                    self.f_proj(hidden_states), attention_mask, conv_state_f
+                )
         else:
             i = self.i_proj(hidden_states)
             f = self.f_proj(hidden_states)
@@ -121,11 +135,15 @@ class HGRNBitAttention(nn.Module):
         # dealing with left-padding
         if attention_mask is not None:
             i = i.mul_(attention_mask.unsqueeze(-1))
-        i, f = map(lambda x: rearrange(x, 'b l (h d) -> b h l d', h=self.num_heads), (i, f))
+        i, f = map(
+            lambda x: rearrange(x, "b l (h d) -> b h l d", h=self.num_heads), (i, f)
+        )
 
         recurrent_state = last_state[-1] if use_cache else None
-        if mode == 'fused_recurrent':
-            o, recurrent_state = fused_recurrent_hgrn(i, f, initial_state=recurrent_state, output_final_state=use_cache)
+        if mode == "fused_recurrent":
+            o, recurrent_state = fused_recurrent_hgrn(
+                i, f, initial_state=recurrent_state, output_final_state=use_cache
+            )
         else:
             raise NotImplementedError(f"Not supported mode `{mode}`.")
 
@@ -139,7 +157,9 @@ class HGRNBitAttention(nn.Module):
                 last_state = (recurrent_state,)
             past_key_values.update(last_state, self.layer_idx, i.shape[2])
 
-        o = self.g_norm(self.g_proj(hidden_states), rearrange(o, 'b h l d -> b l (h d)'))
+        o = self.g_norm(
+            self.g_proj(hidden_states), rearrange(o, "b h l d -> b l (h d)")
+        )
         o = self.o_proj(o)
 
         return o, None, past_key_values
@@ -149,11 +169,15 @@ class HGRNBitAttention(nn.Module):
         state = tuple()
         if self.use_short_conv:
             if self.share_conv_kernel:
-                state += (param.new_zeros(batch_size, self.hidden_size, self.conv_size),)
+                state += (
+                    param.new_zeros(batch_size, self.hidden_size, self.conv_size),
+                )
             else:
-                state += (param.new_zeros(batch_size, self.hidden_size, self.conv_size),
-                          param.new_zeros(batch_size, self.hidden_size, self.conv_size),
-                          param.new_zeros(batch_size, self.hidden_size, self.conv_size))
+                state += (
+                    param.new_zeros(batch_size, self.hidden_size, self.conv_size),
+                    param.new_zeros(batch_size, self.hidden_size, self.conv_size),
+                    param.new_zeros(batch_size, self.hidden_size, self.conv_size),
+                )
         state += (param.new_zeros(batch_size, self.num_heads, self.head_dim),)
         return state
 

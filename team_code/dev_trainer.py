@@ -1,18 +1,15 @@
-import os
 import argparse
-import torch
 from datasets import load_dataset
 from transformers import (
     AutoTokenizer,
-    HfArgumentParser,
     Trainer,
     TrainingArguments,
-    AutoModelForSeq2SeqLM,
 )
 
-from team_code.mm_utils import process_video, process_audio, tokenizer_multimodal_token
+from team_code.mm_utils import tokenizer_multimodal_token
 from team_code.omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
 from team_code.omnimmfreecore.config import HGRNBitMultimodalConfig
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="train config")
@@ -29,9 +26,7 @@ def main():
     args = parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained("ridger/MMfreeLM-2.7B")
-    model = HGRNBitMultimodalModel(config=HGRNBitMultimodalConfig(
-        
-    ))
+    model = HGRNBitMultimodalModel(config=HGRNBitMultimodalConfig())
 
     dataset = load_dataset("lmms-lab/LLaVA-Video-178K")
 
@@ -39,11 +34,11 @@ def main():
         inputs = tokenizer_multimodal_token(
             text=ex["text"],
             video_paths=ex["video_path"],
-            audio_paths=ex["audio_path"], # мало ли
+            audio_paths=ex["audio_path"],  # мало ли
             tokenizer=tokenizer,
         )
         return inputs
-    
+
     tokenized_datasets = dataset.map(preprocess_function, batched=True)
 
     training_args = TrainingArguments(

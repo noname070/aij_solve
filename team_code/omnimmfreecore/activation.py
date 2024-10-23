@@ -10,6 +10,7 @@ import torch.nn.functional as F
 def swish(x):
     return F.silu(x)
 
+
 # 1/sqrt(2*pi)-> 0.3989423
 # 1/sqrt(2)   -> 0.70710678
 # sqrt(2/pi)  -> 0.79788456
@@ -21,7 +22,9 @@ def swish(x):
 @torch.jit.script
 def bias_gelu(y, bias):
     x = bias + y
-    return (x * 0.5 * (1.0 + torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x)))).to(dtype=y.dtype)
+    return (x * 0.5 * (1.0 + torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x)))).to(
+        dtype=y.dtype
+    )
 
 
 # gradient of tanh approximation of gelu
@@ -33,9 +36,9 @@ def bias_gelu_bwd(g, y, bias):
     x = bias + y
     tanh_out = torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x))
     # sqrt(2/pi) * 3 * 0.044715 -> 0.1070322243
-    ff = 0.5 * x * ((1 - tanh_out * tanh_out) * (0.79788456 + 0.1070322243 * x * x)) + 0.5 * (
-        1 + tanh_out
-    )
+    ff = 0.5 * x * (
+        (1 - tanh_out * tanh_out) * (0.79788456 + 0.1070322243 * x * x)
+    ) + 0.5 * (1 + tanh_out)
     grad_y = ff * g
     return grad_y.to(dtype=y.dtype), grad_y.sum(dim=(0), dtype=bias.dtype)
 
@@ -63,7 +66,9 @@ bias_gelu_impl = GeLUFunction.apply
 # x * 0.5 * (1.0 + torch.erf(x * 0.70710678))
 @torch.jit.script
 def gelu_fwd(x):
-    return (x * 0.5 * (1.0 + torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x)))).to(dtype=x.dtype)
+    return (x * 0.5 * (1.0 + torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x)))).to(
+        dtype=x.dtype
+    )
 
 
 # gradient of tanh approximation of gelu
@@ -73,9 +78,9 @@ def gelu_fwd(x):
 def gelu_bwd(g, x):
     tanh_out = torch.tanh(0.79788456 * x * (1 + 0.044715 * x * x))
     # sqrt(2/pi) * 3 * 0.044715 -> 0.1070322243
-    ff = 0.5 * x * ((1 - tanh_out * tanh_out) * (0.79788456 + 0.1070322243 * x * x)) + 0.5 * (
-        1 + tanh_out
-    )
+    ff = 0.5 * x * (
+        (1 - tanh_out * tanh_out) * (0.79788456 + 0.1070322243 * x * x)
+    ) + 0.5 * (1 + tanh_out)
     return (ff * g).to(dtype=x.dtype)
 
 
@@ -136,8 +141,12 @@ template <typename T> T swiglu_bwd_with_output(T x, T y, T g, T& dx, T& dy, T& z
 """
 
 swiglu_fwd = torch.cuda.jiterator._create_jit_fn(swiglu_fwd_codestring)
-swiglu_bwd = torch.cuda.jiterator._create_multi_output_jit_fn(swiglu_bwd_codestring, num_outputs=2)
-swiglu_bwd_with_output = torch.cuda.jiterator._create_multi_output_jit_fn(swiglu_bwd_with_output_codestring, num_outputs=3)
+swiglu_bwd = torch.cuda.jiterator._create_multi_output_jit_fn(
+    swiglu_bwd_codestring, num_outputs=2
+)
+swiglu_bwd_with_output = torch.cuda.jiterator._create_multi_output_jit_fn(
+    swiglu_bwd_with_output_codestring, num_outputs=3
+)
 
 
 class SwiGLUFunction(torch.autograd.Function):
@@ -180,8 +189,8 @@ swiglu = SwiGLUFunction.apply
 swiglu_linear = SwiGLULinearFunction.apply
 
 ACT2FN = {
-    'silu': swish,
-    'swish': swish,
-    'gelu': fast_gelu_impl,
-    'bias_gelu': bias_gelu_impl,
+    "silu": swish,
+    "swish": swish,
+    "gelu": fast_gelu_impl,
+    "bias_gelu": bias_gelu_impl,
 }
