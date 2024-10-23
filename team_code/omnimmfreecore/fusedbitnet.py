@@ -8,8 +8,8 @@ import torch.nn.functional as F
 import triton
 import triton.language as tl
 
-from rmsnorm import RMSNorm
-from utils import contiguous
+from .rmsnorm import RMSNorm
+from .utils import contiguous
 
 
 def activation_quant(x):

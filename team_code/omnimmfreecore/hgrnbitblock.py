@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint
 
-from rmsnorm import RMSNorm
-from hgrnbitmlp import HGRNBitMLP
-from hgrnbitattention import HGRNBitAttention
+from .rmsnorm import RMSNorm
+from .hgrnbitmlp import HGRNBitMLP
+from .hgrnbitattention import HGRNBitAttention
 
 from .config import HGRNBitConfig
 

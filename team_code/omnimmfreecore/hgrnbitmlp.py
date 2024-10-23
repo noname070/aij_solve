@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint
 
-from team_code.omnimmfreecore.bitnet import BitLinear
-from activation import ACT2FN, swiglu
+from .bitnet import BitLinear
+from .activation import ACT2FN, swiglu
 
 
 class HGRNBitMLP(nn.Module):

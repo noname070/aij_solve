@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from rmsnorm import RMSNormLinear, RMSNorm
+from .rmsnorm import RMSNormLinear, RMSNorm
 
 
 def activation_quant(x):

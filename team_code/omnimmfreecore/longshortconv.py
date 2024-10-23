@@ -11,7 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
 
-from activation import ACT2FN
+from .activation import ACT2FN
 
 try:
     from causal_conv1d import causal_conv1d_fn, causal_conv1d_update  # type: ignore

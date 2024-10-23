@@ -11,11 +11,11 @@ import torch.nn as nn
 from einops import rearrange
 from transformers.cache_utils import Cache
 
-from fusedrmsnormswishgate import FusedRMSNormSwishGate
-from longshortconv import ShortConvolution
+from .fusedrmsnormswishgate import FusedRMSNormSwishGate
+from .longshortconv import ShortConvolution
 
-from activation import swiglu
-from fusedrechgrnfwdkernel import fused_recurrent_hgrn
+from .activation import swiglu
+from .fusedrechgrnfwdkernel import fused_recurrent_hgrn
 
 # from mmfreelm.ops.bitnet import BitLinear_Fuse as BitLinear
 
