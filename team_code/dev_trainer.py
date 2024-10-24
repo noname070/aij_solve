@@ -122,7 +122,7 @@ def process_video(
 
         video_data = video_data[:MAX_FRAMES]
         images = [f for f in video_data]
-        video = vprocessor.preprocess(images, return_tensors="pt")["pixel_values"]
+        video = vprocessor.preprocess(images, video_dataset)["pixel_values"]
         videos.append(video)
 
     return torch.Tensor(videos)
@@ -151,11 +151,8 @@ def setup_model_and_tokenizer() -> (
         "image": partial(
             process_image, processor=vision_tower.image_processor, aspect_ratio=None
         ),
-        "video": partial(
-            process_video,
-            processor=vision_tower.image_processor,
-            aspect_ratio=None,
-            num_frames=NUM_FRAMES,
+        "video": lambda video_paths, video_dataset: process_video(
+            video_paths, vision_tower.image_processor, video_dataset
         ),
         "audio": partial(process_audio, processor=None),
     }
