@@ -71,6 +71,7 @@ def process_image(image_path, processor, aspect_ratio="pad"):
 def process_video(
     video_path, processor, s=None, e=None, aspect_ratio="pad", num_frames=NUM_FRAMES
 ):
+    video_path = "./traindata" + video_path
     if isinstance(video_path, str):
         if s is not None and e is not None:
             s = s if s >= 0.0 else 0.0
@@ -215,9 +216,9 @@ def main():
         "0_30_s_academic_v0_1",
         split="multi_choice",
         download_config=DownloadConfig(resume_download=True, extract_on_the_fly=True),
+        data_dir="./traindata"
     )
     
-    base_path = Path(dataset.cache_files[0]['filename']).parent
     def preprocess(data):
         conversation = data["conversations"]
 
@@ -254,7 +255,7 @@ def main():
         )
 
         video_tensor = process_video(
-            base_path + "/" + data["video"], processor["video"], num_frames=NUM_FRAMES
+            data["video"], processor["video"], num_frames=NUM_FRAMES
         )
 
         return {
