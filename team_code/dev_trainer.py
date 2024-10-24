@@ -217,8 +217,9 @@ def main():
     )
 
     def preprocess(data):
+        print(f"data: {data}")
         conversation = {
-            msg["from"]: msg["value"].strip() for msg in data["conversation"]
+            msg["from"]: msg["value"].strip() for msg in data[0]["conversation"]
         }
 
         prompt = conversation.get("human", "").replace("<image>\n", "").strip()
@@ -240,7 +241,7 @@ def main():
         )
 
         video_tensor = process_video(
-            data["video"], processor["video"], num_frames=NUM_FRAMES
+            data[0]["video"], processor["video"], num_frames=NUM_FRAMES
         )
 
         return {
