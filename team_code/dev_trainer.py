@@ -69,88 +69,40 @@ def process_image(image_path, processor, aspect_ratio="pad"):
 
 
 def process_video(
-    video_path, processor, s=None, e=None, aspect_ratio="pad", num_frames=NUM_FRAMES
+    video_path, processor, video_dataset, s=None, e=None, aspect_ratio="pad", num_frames=NUM_FRAMES
 ):
-    # video_path = "./traindata" + video_path
-    if isinstance(video_path, str):
-        if s is not None and e is not None:
-            s = s if s >= 0.0 else 0.0
-            e = e if e >= 0.0 else 0.0
-            if s > e:
-                s, e = e, s
-            elif s == e:
-                e = s + 1
+    vid = video_dataset["__key__"].index(video_path.split(".")[0])
+    vreader = VideoReader(video_dataset["mp4"][vid], ctx=cpu(0), num_threads=1)
+    fps = vreader.get_avg_fps()
+    num_frames_of_video = len(vreader)
 
-        # 1. Loading Video
-        if os.path.isdir(video_path):
-            frame_files = sorted(os.listdir(video_path))
+    # 2. Determine frame range & Calculate frame indices
+    f_start = 0 if s is None else max(int(s * fps) - 1, 0)
+    f_end = (
+        num_frames_of_video - 1
+        if e is None
+        else min(int(e * fps) - 1, num_frames_of_video - 1)
+    )
+    frame_indices = list(range(f_start, f_end + 1))
+    duration = len(frame_indices)
 
-            fps = 3
-            num_frames_of_video = len(frame_files)
+    # 3. Sampling frame indices
+    if num_frames is None:
+        sampled_frame_indices = [
+            frame_indices[i] for i in frame_sample(duration, mode="fps", fps=fps)
+        ]
 
-        elif video_path.endswith(".gif"):
-            gif_reader = imageio.get_reader(video_path)
-
-            fps = 25
-            num_frames_of_video = len(gif_reader)
-
-        else:
-            vreader = VideoReader(video_path, ctx=cpu(0), num_threads=1)
-            fps = vreader.get_avg_fps()
-            num_frames_of_video = len(vreader)
-
-        # 2. Determine frame range & Calculate frame indices
-        f_start = 0 if s is None else max(int(s * fps) - 1, 0)
-        f_end = (
-            num_frames_of_video - 1
-            if e is None
-            else min(int(e * fps) - 1, num_frames_of_video - 1)
-        )
-        frame_indices = list(range(f_start, f_end + 1))
-        duration = len(frame_indices)
-
-        # 3. Sampling frame indices
-        if num_frames is None:
-            sampled_frame_indices = [
-                frame_indices[i] for i in frame_sample(duration, mode="fps", fps=fps)
-            ]
-
-        else:
-            sampled_frame_indices = [
-                frame_indices[i]
-                for i in frame_sample(duration, mode="uniform", num_frames=num_frames)
-            ]
-
-        # 4. Acquire frame data
-        if os.path.isdir(video_path):
-            video_data = [
-                Image.open(os.path.join(video_path, frame_files[f_idx]))
-                for f_idx in sampled_frame_indices
-            ]
-
-        elif video_path.endswith(".gif"):
-            video_data = [
-                Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_RGBA2RGB))
-                for idx, frame in enumerate(gif_reader)
-                if idx in sampled_frame_indices
-            ]
-
-        else:
-            video_data = [
-                Image.fromarray(frame)
-                for frame in vreader.get_batch(sampled_frame_indices).asnumpy()
-            ]
-
-    elif isinstance(video_path, np.ndarray):
-        video_data = [Image.fromarray(f) for f in video_path]
-    elif isinstance(video_path, list) and isinstance(video_path[0], np.ndarray):
-        video_data = [Image.fromarray(f) for f in video_path]
-    elif isinstance(video_path, list) and isinstance(video_path[0], str):
-        video_data = [Image.open(f) for f in video_path]
-    elif isinstance(video_path, list) and isinstance(video_path[0], Image.Image):
-        video_data = video_path
     else:
-        raise ValueError(f"Unsupported video path type: {type(video_path)}")
+        sampled_frame_indices = [
+            frame_indices[i]
+            for i in frame_sample(duration, mode="uniform", num_frames=num_frames)
+        ]
+
+    # 4. Acquire frame data
+    video_data = [
+        Image.fromarray(frame)
+        for frame in vreader.get_batch(sampled_frame_indices).asnumpy()
+    ]
 
     while num_frames is not None and len(video_data) < num_frames:
         video_data.append(
@@ -263,7 +215,7 @@ def main():
         )
 
         video_tensor = process_video(
-            data["video"], processor["video"], num_frames=NUM_FRAMES
+            data["video"], processor["video"], video_dataset, num_frames=NUM_FRAMES
         )
 
         return {
@@ -278,7 +230,7 @@ def main():
     print(f"dataset column_names : {dataset.column_names}")
     print(f"dataset example : {dataset[0]}")
     print(f"video_dataset column_names : {video_dataset.column_names}")
-    print(f"video_dataset example : {video_dataset['__key__'][0][:150]}\n{video_dataset['mp4'][0][:150]}")
+    print(f"video_dataset example : {video_dataset['__key__'][0][:150]} | {video_dataset['__url__'][:150]} | {video_dataset['mp4'][0][:150]}")
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
