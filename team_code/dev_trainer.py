@@ -277,7 +277,8 @@ def main():
     print(f"Raw dataset size: {len(dataset)}")
     print(f"dataset column_names : {dataset.column_names}")
     print(f"dataset example : {dataset[0]}")
-    print(f"video_dataset example : {video_dataset['mp4'][0][:150]}")
+    print(f"video_dataset column_names : {video_dataset.column_names}")
+    print(f"video_dataset example : {video_dataset['__key__'][0][:150]}\n{video_dataset['mp4'][0][:150]}")
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
