@@ -217,7 +217,7 @@ def main():
     )
 
     def preprocess(data):
-        conversation = data["conversation"]
+        conversation = data["conversations"]
 
         prompt = next(
             (msg["value"].strip().replace("<image>\n", "") for msg in conversation if msg["from"] == "human"),
