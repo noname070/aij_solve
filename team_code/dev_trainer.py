@@ -27,11 +27,11 @@ from constants import NUM_FRAMES, MAX_FRAMES
 def parse_args():
     parser = argparse.ArgumentParser(description="train config")
     parser.add_argument("--dataset_path", type=str)
-    parser.add_argument("--output_dir", type=str, default="./outputs")
+    parser.add_argument("--output_dir", type=str, default="/workspace/aij_solve/outputs")
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch_size", type=int, default=16, help="batch_size/device")
     parser.add_argument("--learning_rate", type=float, default=5e-5)
-    parser.add_argument("--logging_dir", type=str, default="./logs")
+    parser.add_argument("--logging_dir", type=str, default="/workspace/aij_solve/runs")
     return parser.parse_args()
 
 
@@ -192,6 +192,7 @@ def main():
     )
 
     def preprocess(data):
+        print("starting preprocessing data")
         conversation = data["conversations"]
 
         print("preprocessing prompts")
