@@ -70,8 +70,8 @@ def process_image(image_path, processor, aspect_ratio="pad"):
 
 def process_video(
     video_paths,
-    vprocessor,
     video_dataset,
+    vprocessor=None,
     aspect_ratio="pad",
     num_frames=NUM_FRAMES,
 ):
@@ -157,7 +157,7 @@ def setup_model_and_tokenizer() -> (
         ),
         "video": partial(
             process_video,
-            processor=vision_tower.image_processor,
+            vprocessor=vision_tower.image_processor,
             aspect_ratio=None,
             num_frames=num_frames
         ),
@@ -170,7 +170,7 @@ def setup_model_and_tokenizer() -> (
 def main():
     args = parse_args()
 
-    model, processor, tokenizer = setup_model_and_tokenizer()
+    model, processors, tokenizer = setup_model_and_tokenizer()
 
     dataset = datasets.load_dataset(
         "lmms-lab/LLaVA-Video-178K",
@@ -223,7 +223,7 @@ def main():
             max_length=512,
         )
 
-        video_tensor = torch.Tensor(processor["video"](data["video"]))
+        video_tensor = processors["video"](data["video"], video_dataset)
 
         return {
             "input_ids": text_inputs["input_ids"].squeeze(0),
