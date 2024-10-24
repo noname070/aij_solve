@@ -9,7 +9,7 @@ from PIL import Image
 import tempfile
 import numpy as np
 import torch
-from decord import VideoReader, cpu  # type: ignore
+from decord import VideoReader, cpu, gpu  # type: ignore
 from sklearn.model_selection import train_test_split
 import transformers
 from transformers import AutoTokenizer, Trainer, TrainingArguments
@@ -78,16 +78,19 @@ def process_video(
     s = None
     e = None
     videos = []
+    print(f"processing {len(videos)} videos")
     for vpath in video_paths:
         vid = video_dataset["__key__"].index(vpath.split(".")[0])
 
         with tempfile.NamedTemporaryFile(
-            delete=False, suffix=".mp4"
+            delete=True, suffix=".mp4"
         ) as temp_video_file:
             temp_video_file.write(video_dataset["mp4"][vid])
             temp_video_path = temp_video_file.name
 
-        vreader = VideoReader(temp_video_path, ctx=cpu(0), num_threads=4)
+        print(f"loading in VideoReader {temp_video_path} ")
+        vreader = VideoReader(temp_video_path, ctx=gpu(0), num_threads=1)
+        print(f"loaded {temp_video_path} ")
         fps = vreader.get_avg_fps()
         num_frames_of_video = len(vreader)
 
@@ -124,6 +127,7 @@ def process_video(
         images = [f for f in video_data]
         video = vprocessor.preprocess(images, return_tensors="pt")["pixel_values"]
         videos.append(video)
+        print(f"done")
 
     return torch.Tensor(videos)
 
