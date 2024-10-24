@@ -254,7 +254,7 @@ def main():
     )
     
     print("start ds mapping preprocessor")
-    tokenized_datasets = dataset.map(preprocess, batched=True)
+    tokenized_datasets = dataset.map(preprocess, batched=True, num_proc=8)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
     train_Tdataset = train_test_data["train"]
