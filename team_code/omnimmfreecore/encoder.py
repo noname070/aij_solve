@@ -12,15 +12,15 @@ from transformers import (
 
 class CLIPVisionTower(nn.Module):
 
-    def __init__(self, vision_tower, args, delay_load=False):
+    def __init__(self, vision_tower, delay_load=False):
         super().__init__()
 
         self.is_loaded = False
 
         self.vision_tower_name = vision_tower
         print(f"`vision_tower_name`: {self.vision_tower_name}")
-        self.select_layer = args.mm_vision_select_layer
-        self.select_feature = getattr(args, "mm_vision_select_feature", "patch")
+        self.select_layer = -1
+        self.select_feature = "patch"
 
         if not delay_load:
             print(f"Load vision model...")
@@ -117,14 +117,14 @@ class CLIPVisionTower(nn.Module):
 
 class SiglipVisionTower(nn.Module):
 
-    def __init__(self, vision_tower, args, delay_load=False):
+    def __init__(self, vision_tower, delay_load=False):
         super().__init__()
 
         self.is_loaded = False
 
         self.vision_tower_name = vision_tower
-        self.select_layer = args.mm_vision_select_layer
-        self.select_feature = getattr(args, "mm_vision_select_feature", "patch")
+        self.select_layer = -2
+        self.select_feature = "patch"
 
         if not delay_load:
             self.load_model()
@@ -213,9 +213,9 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
     )
 
     if "clip" in vision_tower:
-        vision_tower = CLIPVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
+        vision_tower = CLIPVisionTower(vision_tower, **kwargs)
     elif "siglip" in vision_tower:
-        vision_tower = SiglipVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
+        vision_tower = SiglipVisionTower(vision_tower, **kwargs)
     else:
         raise ValueError(f"Unknown vision tower: {vision_tower}")
 

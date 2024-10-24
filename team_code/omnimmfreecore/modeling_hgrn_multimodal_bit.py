@@ -177,7 +177,7 @@ class HGRNBitMultimodalModel(HGRNBitMultimodalPreTrainedModel):
         self.video_feat_size = config.video_frame_size * config.video_channels
         self.audio_feat_size = config.audio_feat_size
         
-        self.vision_tower = SiglipVisionTower("google/siglip-base-patch16-224", mm_vision_select_layer=-2)
+        self.vision_tower = SiglipVisionTower("google/siglip-base-patch16-224")
 
         self.text_embeddings = nn.Embedding(
             config.vocab_size, config.hidden_size, self.padding_idx
