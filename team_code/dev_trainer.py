@@ -17,7 +17,7 @@ import datasets
 from datasets import DownloadConfig
 
 from mm_utils import tokenizer_multimodal_token, expand2square, frame_sample
-from encoder import SiglipVisionTower
+from team_code.omnimmfreecore.encoder import SiglipVisionTower
 
 from omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
 from omnimmfreecore.config import HGRNBitMultimodalConfig

@@ -16,7 +16,7 @@ from transformers.modeling_outputs import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 
-from ..encoder import SiglipVisionTower
+from .encoder import SiglipVisionTower
 
 from .hgrnbitattention import HGRNBitAttention
 from .config import HGRNBitMultimodalConfig
