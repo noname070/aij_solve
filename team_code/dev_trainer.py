@@ -1,7 +1,6 @@
 import argparse
 import os
 from typing import List, Tuple, Union
-from pathlib import Path
 import cv2
 import imageio
 from functools import partial
@@ -9,7 +8,7 @@ from PIL import Image
 import tempfile
 import numpy as np
 import torch
-from decord import VideoReader, cpu, gpu  # type: ignore
+from decord import VideoReader, cpu  # type: ignore
 from sklearn.model_selection import train_test_split
 import transformers
 from transformers import AutoTokenizer, Trainer, TrainingArguments
@@ -18,7 +17,6 @@ import datasets
 from datasets import DownloadConfig
 
 from mm_utils import tokenizer_multimodal_token, expand2square, frame_sample
-from omnimmfreecore.encoder import SiglipVisionTower
 
 from omnimmfreecore.modeling_hgrn_multimodal_bit import HGRNBitMultimodalModel
 from omnimmfreecore.config import HGRNBitMultimodalConfig
@@ -196,6 +194,7 @@ def main():
     def preprocess(data):
         conversation = data["conversations"]
 
+        print("preprocessing prompts")
         prompt = next(
             (
                 msg["value"].strip().replace("<image>\n", "")
@@ -204,6 +203,7 @@ def main():
             ),
             "",
         )
+        print("preprocessing responses")
         response = next(
             (
                 msg["value"].strip()
@@ -213,6 +213,7 @@ def main():
             "",
         )
 
+        print("tokenizing inputs")
         text_inputs = tokenizer(
             prompt,
             return_tensors="pt",
@@ -220,6 +221,7 @@ def main():
             padding="max_length",
             max_length=512,
         )
+        print("tokenizing labels")
         label_inputs = tokenizer(
             response,
             return_tensors="pt",
@@ -228,6 +230,7 @@ def main():
             max_length=512,
         )
 
+        print("processing video")
         video_tensor = processors["video"](data["video"], video_dataset)
 
         return {
