@@ -69,58 +69,68 @@ def process_image(image_path, processor, aspect_ratio="pad"):
 
 
 def process_video(
-    video_path, processor, video_dataset, s=None, e=None, aspect_ratio="pad", num_frames=NUM_FRAMES
+    video_paths,
+    processor,
+    video_dataset,
+    s=None,
+    e=None,
+    aspect_ratio="pad",
+    num_frames=NUM_FRAMES,
 ):
-    vid = video_dataset["__key__"].index(video_path.split(".")[0])
-    vreader = VideoReader(video_dataset["mp4"][vid], ctx=cpu(0), num_threads=1)
-    fps = vreader.get_avg_fps()
-    num_frames_of_video = len(vreader)
+    videos = []
+    for vpath in video_paths:
+        vid = video_dataset["__key__"].index(vpath.split(".")[0])
+        vreader = VideoReader(video_dataset["mp4"][vid], ctx=cpu(0), num_threads=4)
+        fps = vreader.get_avg_fps()
+        num_frames_of_video = len(vreader)
 
-    # 2. Determine frame range & Calculate frame indices
-    f_start = 0 if s is None else max(int(s * fps) - 1, 0)
-    f_end = (
-        num_frames_of_video - 1
-        if e is None
-        else min(int(e * fps) - 1, num_frames_of_video - 1)
-    )
-    frame_indices = list(range(f_start, f_end + 1))
-    duration = len(frame_indices)
-
-    # 3. Sampling frame indices
-    if num_frames is None:
-        sampled_frame_indices = [
-            frame_indices[i] for i in frame_sample(duration, mode="fps", fps=fps)
-        ]
-
-    else:
-        sampled_frame_indices = [
-            frame_indices[i]
-            for i in frame_sample(duration, mode="uniform", num_frames=num_frames)
-        ]
-
-    # 4. Acquire frame data
-    video_data = [
-        Image.fromarray(frame)
-        for frame in vreader.get_batch(sampled_frame_indices).asnumpy()
-    ]
-
-    while num_frames is not None and len(video_data) < num_frames:
-        video_data.append(
-            Image.fromarray(np.zeros((*video_data[-1].size, 3), dtype=np.uint8))
+        # 2. Determine frame range & Calculate frame indices
+        f_start = 0 if s is None else max(int(s * fps) - 1, 0)
+        f_end = (
+            num_frames_of_video - 1
+            if e is None
+            else min(int(e * fps) - 1, num_frames_of_video - 1)
         )
+        frame_indices = list(range(f_start, f_end + 1))
+        duration = len(frame_indices)
 
-    video_data = video_data[:MAX_FRAMES]
+        # 3. Sampling frame indices
+        if num_frames is None:
+            sampled_frame_indices = [
+                frame_indices[i] for i in frame_sample(duration, mode="fps", fps=fps)
+            ]
 
-    if aspect_ratio == "pad":
-        images = [
-            expand2square(f, tuple(int(x * 255) for x in processor.image_mean))
-            for f in video_data
+        else:
+            sampled_frame_indices = [
+                frame_indices[i]
+                for i in frame_sample(duration, mode="uniform", num_frames=num_frames)
+            ]
+
+        # 4. Acquire frame data
+        video_data = [
+            Image.fromarray(frame)
+            for frame in vreader.get_batch(sampled_frame_indices).asnumpy()
         ]
-        video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
-    else:
-        images = [f for f in video_data]
-        video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
-    return video
+
+        while num_frames is not None and len(video_data) < num_frames:
+            video_data.append(
+                Image.fromarray(np.zeros((*video_data[-1].size, 3), dtype=np.uint8))
+            )
+
+        video_data = video_data[:MAX_FRAMES]
+
+        if aspect_ratio == "pad":
+            images = [
+                expand2square(f, tuple(int(x * 255) for x in processor.image_mean))
+                for f in video_data
+            ]
+            video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
+        else:
+            images = [f for f in video_data]
+            video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
+            videos.append(video)
+
+    return torch.Tensor(videos)
 
 
 def process_audio(audio, processor):
@@ -170,15 +180,15 @@ def main():
         download_config=DownloadConfig(resume_download=True, extract_on_the_fly=True),
         # data_dir="0_30_s_academic_v0_1"
     )
-    
+
     video_dataset = datasets.load_dataset(
         "lmms-lab/LLaVA-Video-178K",
         "0_30_s_academic_v0_1",
         split="train",
         download_config=DownloadConfig(resume_download=True, extract_on_the_fly=True),
-        data_dir="0_30_s_academic_v0_1"
+        data_dir="0_30_s_academic_v0_1",
     )
-    
+
     def preprocess(data):
         conversation = data["conversations"]
 
@@ -230,7 +240,9 @@ def main():
     print(f"dataset column_names : {dataset.column_names}")
     print(f"dataset example : {dataset[0]}")
     print(f"video_dataset column_names : {video_dataset.column_names}")
-    print(f"video_dataset example : {video_dataset['__key__'][0][:150]} | {video_dataset['__url__'][:150]} | {video_dataset['mp4'][0][:150]}")
+    print(
+        f"video_dataset example : {video_dataset['__key__'][0][:150]} | {video_dataset['__url__'][:150]} | {video_dataset['mp4'][0][:150]}"
+    )
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
