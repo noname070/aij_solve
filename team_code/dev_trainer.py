@@ -267,6 +267,8 @@ def main():
         }
 
     print(f"Raw dataset size: {len(dataset)}")
+    print(f"dataset column_names : {dataset.column_names}")
+    print(f"dataset example : {dataset[0]}")
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
