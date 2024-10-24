@@ -217,13 +217,16 @@ def main():
     )
 
     def preprocess(data):
-        print(f"data: {data}")
-        conversation = {
-            msg["from"]: msg["value"].strip() for msg in data[0]["conversation"]
-        }
+        conversation = data["conversation"]
 
-        prompt = conversation.get("human", "").replace("<image>\n", "").strip()
-        response = conversation.get("gpt", "").strip()
+        prompt = next(
+            (msg["value"].strip().replace("<image>\n", "") for msg in conversation if msg["from"] == "human"),
+            ""
+        )
+        response = next(
+            (msg["value"].strip() for msg in conversation if msg["from"] == "gpt"),
+            ""
+        )
 
         text_inputs = tokenizer(
             prompt,
@@ -241,7 +244,7 @@ def main():
         )
 
         video_tensor = process_video(
-            data[0]["video"], processor["video"], num_frames=NUM_FRAMES
+            data["video"], processor["video"], num_frames=NUM_FRAMES
         )
 
         return {
