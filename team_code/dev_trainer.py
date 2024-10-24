@@ -83,7 +83,7 @@ def process_video(
         vid = video_dataset["__key__"].index(vpath.split(".")[0])
 
         with tempfile.NamedTemporaryFile(
-            delete=True, suffix=".mp4"
+            delete=False, suffix=".mp4"
         ) as temp_video_file:
             temp_video_file.write(video_dataset["mp4"][vid])
             temp_video_path = temp_video_file.name
@@ -127,6 +127,7 @@ def process_video(
         images = [f for f in video_data]
         video = vprocessor.preprocess(images, return_tensors="pt")["pixel_values"]
         videos.append(video)
+        os.remove(temp_video_path)
         print(f"done")
 
     return torch.Tensor(videos)
