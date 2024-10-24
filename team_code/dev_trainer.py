@@ -1,6 +1,7 @@
 import argparse
 import os
 from typing import List, Tuple, Union
+from pathlib import Path
 import cv2
 import imageio
 from functools import partial
@@ -215,7 +216,8 @@ def main():
         split="multi_choice",
         download_config=DownloadConfig(resume_download=True, extract_on_the_fly=True),
     )
-
+    
+    base_path = Path(dataset.cache_files[0]['filename']).parent
     def preprocess(data):
         conversation = data["conversations"]
 
@@ -252,7 +254,7 @@ def main():
         )
 
         video_tensor = process_video(
-            data["video"], processor["video"], num_frames=NUM_FRAMES
+            base_path + "/" + data["video"], processor["video"], num_frames=NUM_FRAMES
         )
 
         return {
@@ -264,8 +266,6 @@ def main():
         }
 
     print(f"Raw dataset size: {len(dataset)}")
-    print(f"data expample : {dataset[0]}")
-    print(f"data column names: {dataset.column_names}")
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
@@ -275,8 +275,8 @@ def main():
     print(f"Train dataset size: {len(train_Tdataset)}")
     print(f"Test dataset size: {len(test_Tdataset)}")
 
-    print(f"Train example : {train_Tdataset[0]} ")
-    print(f"Test example : {train_Tdataset[0]} ")
+    print(f"Train example: {train_Tdataset[0]} ")
+    print(f"Test example: {train_Tdataset[0]} ")
 
     # TEST ONLY
     for i in range(len(tokenized_datasets)):
