@@ -16,6 +16,8 @@ from transformers.modeling_outputs import (
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 
+from ..encoder import SiglipVisionTower
+
 from .hgrnbitattention import HGRNBitAttention
 from .config import HGRNBitMultimodalConfig
 from .utils import RecurrentCache
@@ -174,13 +176,15 @@ class HGRNBitMultimodalModel(HGRNBitMultimodalPreTrainedModel):
         self.vocab_size = config.vocab_size
         self.video_feat_size = config.video_frame_size * config.video_channels
         self.audio_feat_size = config.audio_feat_size
+        
+        self.vision_tower = SiglipVisionTower("google/siglip-base-patch16-224", mm_vision_select_layer=-2)
 
         self.text_embeddings = nn.Embedding(
             config.vocab_size, config.hidden_size, self.padding_idx
         )
 
         self.video_proj = nn.Linear(self.video_feat_size, config.hidden_size)
-        self.audio_proj = nn.Linear(self.audio_feat_size, config.hidden_size)
+        # self.audio_proj = nn.Linear(self.audio_feat_size, config.hidden_size)
 
         if config.use_lower_bound:
             self.lower_bounds = nn.Parameter(
@@ -197,7 +201,11 @@ class HGRNBitMultimodalModel(HGRNBitMultimodalPreTrainedModel):
         self.gradient_checkpointing = False
 
         self.post_init()
-
+        
+    # TODO
+    def get_vision_tower(self):
+        pass
+    
     def get_input_embeddings(self):
         return self.text_embeddings
 
@@ -225,13 +233,13 @@ class HGRNBitMultimodalModel(HGRNBitMultimodalPreTrainedModel):
 
         text_embeds = self.text_embeddings(input_ids) if input_ids is not None else None
         video_embeds = self.video_proj(input_ids) if video_ids is not None else None
-        audio_embeds = self.audio_proj(input_ids) if audio_ids is not None else None
+        # audio_embeds = self.audio_proj(input_ids) if audio_ids is not None else None
 
         if self.config.fusion_method == "concat":
             hidden_states = torch.cat(
                 [
                     emb
-                    for emb in [text_embeds, video_embeds, audio_embeds]
+                    for emb in [text_embeds, video_embeds] #, audio_embeds]
                     if emb is not None
                 ],
                 dim=1,
