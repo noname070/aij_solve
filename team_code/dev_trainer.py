@@ -219,6 +219,14 @@ def main():
         # data_dir="0_30_s_academic_v0_1"
     )
     
+    video_dataset = datasets.load_dataset(
+        "lmms-lab/LLaVA-Video-178K",
+        "0_30_s_academic_v0_1",
+        split="train",
+        download_config=DownloadConfig(resume_download=True, extract_on_the_fly=True),
+        data_dir="0_30_s_academic_v0_1"
+    )
+    
     def preprocess(data):
         conversation = data["conversations"]
 
@@ -269,6 +277,7 @@ def main():
     print(f"Raw dataset size: {len(dataset)}")
     print(f"dataset column_names : {dataset.column_names}")
     print(f"dataset example : {dataset[0]}")
+    print(f"video_dataset example : {video_dataset["mp4"][0]}")
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
