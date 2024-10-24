@@ -206,7 +206,7 @@ def setup_model_and_tokenizer() -> (
 
 def main():
     args = parse_args()
-    
+
     model, processor, tokenizer = setup_model_and_tokenizer()
 
     dataset = datasets.load_dataset(
@@ -220,12 +220,16 @@ def main():
         conversation = data["conversations"]
 
         prompt = next(
-            (msg["value"].strip().replace("<image>\n", "") for msg in conversation if msg["from"] == "human"),
-            ""
+            (
+                msg["value"].strip().replace("<image>\n", "")
+                for msg in conversation
+                if msg.get("from") == "human"
+            ),
+            "",
         )
         response = next(
-            (msg["value"].strip() for msg in conversation if msg["from"] == "gpt"),
-            ""
+            (msg["value"].strip() for msg in conversation if msg.get("from") == "gpt"),
+            "",
         )
 
         text_inputs = tokenizer(
@@ -256,7 +260,7 @@ def main():
         }
 
     print(f"Raw dataset size: {len(dataset)}")
-    print(f"data expample : {dataset[0]}") 
+    print(f"data expample : {dataset[0]}")
     print(f"data column names: {dataset.column_names}")
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
