@@ -223,12 +223,16 @@ def main():
             (
                 msg["value"].strip().replace("<image>\n", "")
                 for msg in conversation
-                if msg.get("from") == "human"
+                if isinstance(msg, dict) and msg.get("from") == "human"
             ),
             "",
         )
         response = next(
-            (msg["value"].strip() for msg in conversation if msg.get("from") == "gpt"),
+            (
+                msg["value"].strip()
+                for msg in conversation
+                if isinstance(msg, dict) and msg.get("from") == "gpt"
+            ),
             "",
         )
 
