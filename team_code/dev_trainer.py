@@ -122,7 +122,7 @@ def process_video(
 
         video_data = video_data[:MAX_FRAMES]
         images = [f for f in video_data]
-        video = vprocessor.preprocess(images, video_dataset)["pixel_values"]
+        video = vprocessor(images, video_dataset)["pixel_values"]
         videos.append(video)
 
     return torch.Tensor(videos)
