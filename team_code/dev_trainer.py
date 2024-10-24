@@ -6,7 +6,7 @@ import cv2
 import imageio
 from functools import partial
 from PIL import Image
-
+import tempfile
 import numpy as np
 import torch
 from decord import VideoReader, cpu  # type: ignore
@@ -80,7 +80,12 @@ def process_video(
     videos = []
     for vpath in video_paths:
         vid = video_dataset["__key__"].index(vpath.split(".")[0])
-        vreader = VideoReader(video_dataset["mp4"][vid], ctx=cpu(0), num_threads=4)
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video_file:
+            temp_video_file.write(video_dataset["mp4"][vid])
+            temp_video_path = temp_video_file.name
+            
+        vreader = VideoReader(temp_video_path, ctx=cpu(0), num_threads=4)
         fps = vreader.get_avg_fps()
         num_frames_of_video = len(vreader)
 
@@ -241,7 +246,7 @@ def main():
     print(f"dataset example : {dataset[0]}")
     print(f"video_dataset column_names : {video_dataset.column_names}")
     print(
-        f"video_dataset example : {video_dataset['__key__'][0][:150]} | {video_dataset['__url__'][:150]} | {video_dataset['mp4'][0][:150]}"
+        f"video_dataset example : {video_dataset['__key__'][0][:150]} | {video_dataset['mp4'][0][:150]}"
     )
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
