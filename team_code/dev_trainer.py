@@ -89,7 +89,7 @@ def process_video(
             temp_video_path = temp_video_file.name
 
         print(f"loading in VideoReader {temp_video_path} ")
-        vreader = VideoReader(temp_video_path, ctx=gpu(0), num_threads=1)
+        vreader = VideoReader(temp_video_path, ctx=cpu(0), num_threads=1)
         print(f"loaded {temp_video_path} ")
         fps = vreader.get_avg_fps()
         num_frames_of_video = len(vreader)
