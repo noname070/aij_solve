@@ -80,16 +80,17 @@ def process_video(
     videos = []
     for vpath in video_paths:
         vid = video_dataset["__key__"].index(vpath.split(".")[0])
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_video_file:
+
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".mp4"
+        ) as temp_video_file:
             temp_video_file.write(video_dataset["mp4"][vid])
             temp_video_path = temp_video_file.name
-            
+
         vreader = VideoReader(temp_video_path, ctx=cpu(0), num_threads=4)
         fps = vreader.get_avg_fps()
         num_frames_of_video = len(vreader)
 
-        # 2. Determine frame range & Calculate frame indices
         f_start = 0 if s is None else max(int(s * fps) - 1, 0)
         f_end = (
             num_frames_of_video - 1
@@ -99,19 +100,16 @@ def process_video(
         frame_indices = list(range(f_start, f_end + 1))
         duration = len(frame_indices)
 
-        # 3. Sampling frame indices
         if num_frames is None:
             sampled_frame_indices = [
                 frame_indices[i] for i in frame_sample(duration, mode="fps", fps=fps)
             ]
-
         else:
             sampled_frame_indices = [
                 frame_indices[i]
                 for i in frame_sample(duration, mode="uniform", num_frames=num_frames)
             ]
 
-        # 4. Acquire frame data
         video_data = [
             Image.fromarray(frame)
             for frame in vreader.get_batch(sampled_frame_indices).asnumpy()
@@ -123,17 +121,9 @@ def process_video(
             )
 
         video_data = video_data[:MAX_FRAMES]
-
-        if aspect_ratio == "pad":
-            images = [
-                expand2square(f, tuple(int(x * 255) for x in processor.image_mean))
-                for f in video_data
-            ]
-            video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
-        else:
-            images = [f for f in video_data]
-            video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
-            videos.append(video)
+        images = [f for f in video_data]
+        video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
+        videos.append(video)
 
     return torch.Tensor(videos)
 
