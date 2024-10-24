@@ -70,7 +70,7 @@ def process_image(image_path, processor, aspect_ratio="pad"):
 
 def process_video(
     video_paths,
-    processor,
+    vprocessor,
     video_dataset,
     s=None,
     e=None,
@@ -122,7 +122,7 @@ def process_video(
 
         video_data = video_data[:MAX_FRAMES]
         images = [f for f in video_data]
-        video = processor.preprocess(images, return_tensors="pt")["pixel_values"]
+        video = vprocessor.preprocess(images, return_tensors="pt")["pixel_values"]
         videos.append(video)
 
     return torch.Tensor(videos)
