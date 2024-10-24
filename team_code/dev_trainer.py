@@ -214,8 +214,9 @@ def main():
     dataset = datasets.load_dataset(
         "lmms-lab/LLaVA-Video-178K",
         "0_30_s_academic_v0_1",
+        split="multi_choice",
         download_config=DownloadConfig(resume_download=True, extract_on_the_fly=True),
-        data_dir="0_30_s_academic_v0_1"
+        # data_dir="0_30_s_academic_v0_1"
     )
     
     def preprocess(data):
