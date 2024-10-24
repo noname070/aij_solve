@@ -175,6 +175,8 @@ def main():
 
     model, processors, tokenizer = setup_model_and_tokenizer()
 
+
+    print("loading dataset")
     dataset = datasets.load_dataset(
         "lmms-lab/LLaVA-Video-178K",
         "0_30_s_academic_v0_1",
@@ -183,6 +185,7 @@ def main():
         # data_dir="0_30_s_academic_v0_1"
     )
 
+    print("loading v_dataset")
     video_dataset = datasets.load_dataset(
         "lmms-lab/LLaVA-Video-178K",
         "0_30_s_academic_v0_1",
@@ -249,6 +252,8 @@ def main():
     print(
         f"video_dataset example : {video_dataset['__key__'][0][:150]} | {video_dataset['mp4'][0][:150]}"
     )
+    
+    print("start ds mapping preprocessor")
     tokenized_datasets = dataset.map(preprocess, batched=True)
 
     train_test_data = tokenized_datasets.train_test_split(test_size=0.3)
